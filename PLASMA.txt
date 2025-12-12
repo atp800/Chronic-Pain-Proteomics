@@ -1,0 +1,18 @@
+PLASMA
+SPE - soluble (cleaned
+s - soluble
+i - insoluble
+
+
+RESPONSE(long term project)
+- Resp -  responder
+- NR - non-responder
+
+
+Replicate
+- same blood sample (b isecond measurement)
+- could average and use result
+- or could treat as oversampling
+
+
+some proteins in different fractions

@@ -1,0 +1,6 @@
+Issues:
+
+need mixed modal to account for multiple measurements per person
+need to turn 0 values into null
+toggle for allowing/disallowing inclusion of 3 datapoints
+go over p values again and scrap ones based on individual participants

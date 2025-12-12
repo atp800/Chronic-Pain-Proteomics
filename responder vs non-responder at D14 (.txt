@@ -1,0 +1,96 @@
+responder vs non-responder at D14 (when sensitivity peaks)
+Responder at day 0 vs day 14
+
+
+
+what to do differently for processed vs technical replicate
+
+
+look at marie pre-processing/cleanup script
+
+
+how to treat sprate fractions and separate studies
+-might be batch effect - need to check even if its negligible
+- check difference between replicates - should be small variability
+
+
+
+
+toggle for tehcnical vs processed replicate
+
+
+ask Pauline for coerrect dataset - is data normalised, etc, what steps were used in processing
+
+
+
+accession numbers
+
+
+
+Expectation:
+Responders have a change in protein on day 14 from day 0
+Responders vs non-responders have a difference in protein level on day 14
+In responders the protein level increased gradually from day 14 to day 0
+
+In responders protein returned closer to baseline by day X - do we have this data???
+
+The protein matches with one found by Marie
+
+Validate the hypersensitivity peaked on day 14
+Look at raw sensitivity scores and correlations with proteins
+
+differentiation between sensitivity to pain and actual pain
+
+
+Data:
+- Group (responder/non-responder)
+- Protein levels at day 0
+- Protein elvels at day 14
+
+
+
+Techniques:
+- linear regression
+- logistic regression
+- spearman's or pearson's
+- wilcoxon signed rank test
+- welches T-test
+- some for of clustering
+- PCA
+
+
+
+Questions:
+- can I have the longitudinal data pls?
+- is the data raw or normalised?
+- has any other data preprocessing been done (e.g. log2 transformation)?
+- what are the reasons for missing values? MNAR? Technical issues?
+- what processing did you do? Particularly in terms of how you produced the replicates and what batches you processed in
+- do you have pain scores for the longitudinal/chronic data
+
+- how did you differentiate responders and non-responders
+
+
+- responder if over 20% threshold in sensitivity
+- can we get the raw change in sensitivity? 
+	- could see if there's a correlation
+	- also could validate the cut off threshold (e.g. with clustering)
+
+
+
+
+
+sensitivity test - mechanical (also a thermal one)
+what days were measurements taken
+does it include the newton force applied/force when the participant reacted
+
+
+
+
+
+
+Objectives
+- find out about Pauline's data
+
+
+- a way to include data from people who didn't come to every measurement session - mixed effect analysis? impute/extrapolate data

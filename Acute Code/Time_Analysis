@@ -1,0 +1,266 @@
+import pandas as pd
+from scipy.stats import ttest_ind
+import matplotlib.pyplot as plt
+import seaborn as sns
+import math
+import numpy as np
+import statsmodels.api as sm
+
+
+'''
+This script checks for bell curve patterns in protein levels across time
+It checks for individual participants, and then across all participants
+It exports significant correlations to an Excel file
+'''
+
+
+FILE_PATH = 'Combined_Data.xlsx'
+METADATA_COLS = ['Sample ID', 'Condition']
+VAS_COL = 'VAS (Pain Score)'
+P_THRESHOLD = 0.05
+
+
+
+# Read Excel file
+df = pd.read_excel(FILE_PATH, sheet_name='Sheet1')
+
+
+
+# ------------------------------
+# Cleaning
+# ------------------------------ 
+# Remove rows with no protein data
+protein_cols = [c for c in df.columns if c not in METADATA_COLS and c != VAS_COL]
+df = df.dropna(subset=protein_cols, how='all')
+
+
+# Remove any protein columns with >=3 missing values
+print(f"Proteins before dropping missing data: {len(protein_cols)}")
+filtered_proteins = [c for c in protein_cols if df[c].isna().sum() < 3]
+df_clean = df[METADATA_COLS + [VAS_COL] + filtered_proteins].copy()
+print(f"Proteins remaining after dropping missing data: {len(filtered_proteins)}")
+
+protein_cols = filtered_proteins
+
+
+
+# ------------------------------
+# Wrangling
+# ------------------------------
+# Convert time to numeric values
+time_map = {'T0': 0, 'T10': 10, 'T20': 20, 'T30': 30}
+# df_clean = df_clean.copy()
+df_clean['Time'] = df_clean['Condition'].map(time_map)
+
+
+
+
+
+# ------------------------------
+# Method for fitting quadratic curve
+# ------------------------------
+all_results = []
+def quadratic_fit(x, y):
+    # Remove missing values
+    mask = ~np.isnan(y)
+    x = x[mask]
+    y = y[mask]
+    
+    if len(x) < 3:  # If there's less than 3 points its not enough to fit a quadratic
+        return None, None, None, None
+    
+    # Fit quadratic (coefficients: [a, b, c] where y = a*x^2 + b*x + c)
+    X = np.column_stack((x**2, x, np.ones_like(x)))
+    try:
+        model = sm.OLS(y, X).fit()
+        a, b, c = model.params
+        pvals = model.pvalues       # p-value of quadratic - checks if the data would better fit a linear model
+        return a, b, c, pvals[0] 
+    except:
+        return None, None, None, None
+    
+
+
+
+# ------------------------------
+# Method for checking for bell curve
+# ------------------------------
+def is_bell(y_vals, time_vals):
+
+    # Map times to values
+    time_dict = dict(zip(time_vals, y_vals))
+    
+    # Require T0, T10, T20, T30 present
+    required_times = [0, 10, 20, 30]
+    for t in required_times:
+        if t not in time_dict:
+            return False  # missing value
+    
+    t0 = time_dict[0]
+    t10 = time_dict[10]
+    t20 = time_dict[20]
+    t30 = time_dict[30]
+    
+    if (t10 > t0) and (t20 > t30):          # rise then fall bell curve
+        return True
+    elif (t10 < t0) and (t20 < t30):        # fall then rise inverted bell
+        return True
+    else:
+        return False
+
+
+
+# ------------------------------
+# Method for checking for bell curve strength
+# ------------------------------
+def bell_strength(y_vals, time_vals):
+    # Map times to values
+    time_dict = dict(zip(time_vals, y_vals))
+    
+    # Require T0, T10, T20, T30 present
+    required_times = [0, 10, 20, 30]
+    for t in required_times:
+        if t not in time_dict:
+            return 0  # missing value
+    
+    t0, t10, t20, t30 = time_dict[0], time_dict[10], time_dict[20], time_dict[30]
+
+    # Calculate means
+    end_mean = (t0 + t30) / 2
+    if abs(end_mean) < 1e-9: # If end_mean is basically 0, skip protein
+        return 0
+    
+    # Check if bell or inverted bell
+    if (t10 > t0) and (t20 > t30):  # bell
+        mid_max = max(t10, t20)
+        strength = (mid_max - end_mean) / abs(end_mean)
+        return strength
+    
+    elif (t10 < t0) and (t20 < t30):  # inverted bell
+        mid_min = min(t10, t20)
+        strength = (end_mean - mid_min) / abs(end_mean)
+        return strength
+    
+    else:
+        return 0  # not a bell
+
+
+
+# ------------------------------
+# Method for checking for bell strength P Value
+# ------------------------------
+def calculate_bell_pval(y_vals, time_vals):     # Performs a T-test between the middle (T10, T20) and ends (T0, T30)
+
+    df_temp = pd.DataFrame({'Time': time_vals, 'Value': y_vals})
+    
+    # Group Middle (10, 20) vs Ends (0, 30)
+    middle = df_temp[df_temp['Time'].isin([10, 20])]['Value'].dropna()
+    ends = df_temp[df_temp['Time'].isin([0, 30])]['Value'].dropna()
+    
+    if len(middle) < 2 or len(ends) < 2:
+        return 1.0 # Not enough data for stats
+        
+    # T-test (Ind) assumes independent samples. 
+    # For N=1 participant, this tests if the Magnitude of Middle points is diff from Ends.
+    stat, pval = ttest_ind(middle, ends, equal_var=False)
+    return pval
+
+
+
+
+# ------------------------------
+# Quadratics and bell curves per individual participant
+# ------------------------------
+print("\nFitting quadratics and bell curves per participant...")
+for pid, group in df_clean.groupby('Sample ID'):        # Group by participant
+    for prot in protein_cols:
+        group = group.sort_values('Time')               # Check times are in order   
+        a, b, c, pval = quadratic_fit(group['Time'].values, group[prot].values)
+
+        # if a is not None and pval < 0.05 and is_bell(group[prot].values, group['Time'].values):  # statistically significant quadratic term and bell curve
+        strength = bell_strength(group[prot].values, group['Time'].values)
+        bell_pval = calculate_bell_pval(group[prot].values, group['Time'].values)
+        bell_shape = is_bell(group[prot].values, group['Time'].values)
+        all_results.append({'Participant': pid, 'Protein': prot, 'Quad_PVal': pval, 'Bell_Strength': strength, 'Bell_PVal': bell_pval, 'Bell_Shape': bell_shape})
+
+
+
+# ------------------------------
+# Quadratics and bell curves across all participants
+# ------------------------------
+print("\nFitting quadratics and bell curves for all participants...")
+for prot in protein_cols:
+    a, b, c, pval = quadratic_fit(df_clean['Time'].values, df_clean[prot].values)
+    means = df_clean.groupby('Time')[prot].mean()                                               # Get mean protein values at each time point
+    
+    # Check for all timepoints
+    if all(t in means.index for t in [0, 10, 20, 30]):
+        y_means = means.loc[[0, 10, 20, 30]].values
+        x_times = [0, 10, 20, 30]   
+                                               
+    # if a is not None and pval < 0.05 and is_bell(y_means, x_times):     # statistically significant quadratic term and bell curve
+    strength = bell_strength(y_means, x_times)
+    subset = df_clean[['Time', prot]].dropna()
+    bell_p = calculate_bell_pval(subset[prot].values, subset['Time'].values)
+    bell_shape = is_bell(y_means, x_times)
+    all_results.append({'Participant': 'all', 'Protein': prot, 'Quad_PVal': pval, 'Bell_Strength': strength, 'Bell_PVal': bell_p, 'Bell_Shape': bell_shape})
+
+
+
+# ------------------------------
+# Export reuslts to Excel
+# ------------------------------
+if all_results:
+    df_results = pd.DataFrame(all_results)
+    df_results.fillna('n/a', inplace=True)
+    df_results['Bell_Shape_Frequency'] = df_results.groupby('Protein')['Bell_Shape'].transform('sum')           # Get frequency each significant protein appears
+    df_results = df_results.sort_values(by=['Bell_Strength', 'Protein', 'Bell_Shape_Frequency', 'Bell_PVal'], ascending=[False, True, False, True])     # Sort by bell strength, then protein name, then frequency
+    df_results.to_excel('Time_Bell_Curves.xlsx', index=False)
+    print("\nSaved strongest bell curves to Time_Bell_Curves.xlsx")
+else:
+    print("\nNo significant protein bell curves found; nothing to save.")
+
+
+
+
+# ------------------------------
+# Plot top X strongest correlations         # CHANGE TO SUBPLOTSSSS
+# ------------------------------
+# ------------------------------
+# Plot top X strongest correlations (Subplots)
+# ------------------------------
+NUMBER_TO_PLOT = 15
+top_prots = sorted(all_results, key=lambda x: x['Bell_Strength'], reverse=True)[:NUMBER_TO_PLOT]
+
+if len(top_prots) > 0:
+    n_cols = 5              # Gride size (number of columns)
+    n_rows = math.ceil(len(top_prots) / n_cols)
+    
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 3.5, n_rows * 3))
+    axes = axes.flatten()       # Flatten 2D array of axes to 1D for easy looping
+
+    for i, prot_info in enumerate(top_prots):
+        ax = axes[i]
+        prot = prot_info['Protein']
+        participant = prot_info['Participant']
+        strength = prot_info['Bell_Strength']
+        pval = prot_info['Bell_PVal']
+        
+        if participant == 'all':
+            # Plot aggregate with confidence interval
+            sns.lineplot(x='Time', y=prot, data=df_clean, marker='o', ax=ax, color='teal')
+            ax.set_title(f"ALL: {prot}\nStr: {strength:.2f} | P: {pval:.3f}", fontsize=10)
+        else:
+            # Plot specific participant
+            subset = df_clean[df_clean['Sample ID'] == participant]
+            sns.lineplot(x='Time', y=prot, data=subset, marker='o', ax=ax, color='firebrick')
+            ax.set_title(f"{participant}: {prot}\nStr: {strength:.2f} | P: {pval:.3f}", fontsize=10)
+        
+        ax.set_xlabel('') # Remove x labels to save space
+    
+    # Hide any unused subplots if number_to_plot is not a multiple of n_cols
+    for j in range(i + 1, len(axes)):
+        axes[j].axis('off')
+
+    plt.tight_layout()
+    plt.show()
