@@ -114,29 +114,43 @@ ORIGINAL_DATA_DF = pd.read_excel(INPUT_FILE_PATH, sheet_name=SHEET_NAME)
 OUTPUT_FILE_PATH = "Chronic Code/Analysis_Output"
 
 # Column Names
-ID_COLUMN       = "Sample" 
+ID_COLUMN       = "Sample_ID" 
 CONDITION_COLUMN = "Group"
+DELTA_COLUMN = "Time"           # Column to calculate delta on if REPLACE_VALS_WITH_DELTAS is True
 UNNEEDED_COLUMNS = ["Time"]    # CHECK SELECTED COLUMNS ARE ACTUALLY BEING REMOVED FROM ANALYSIS                                             # use for unneeded columns
-PROTEIN_COLUMNS  = [col for col in ORIGINAL_DATA_DF.columns if (col not in ID_COLUMN and col not in UNNEEDED_COLUMNS and col != CONDITION_COLUMN)]  
+PROTEIN_COLUMNS  = [col for col in ORIGINAL_DATA_DF.columns if (col not in ID_COLUMN and col not in UNNEEDED_COLUMNS and col != CONDITION_COLUMN and col != DELTA_COLUMN)]  
 
 # Pre-Processing Settings
 ALREADY_LOG2 = True             # NOT IMPLEMENTED
 ALREADY_NORMALISED = True       # NOT IMPLEMENTED
 
 # Tests to Run
-RUN_PCA = True                  # NOT IMPLEMENTED
+RUN_PCA = False                 # NOT IMPLEMENTED
 RUN_LIMMA = True
-RUN_SPEARMANS = True            # NOT IMPLEMENTED
-RUN_LASSO = True                # NOT IMPLEMENTED
+RUN_SPEARMANS = False           # NOT IMPLEMENTED
+RUN_LASSO = False               # NOT IMPLEMENTED
 RUN_LOGISTIC_REGRESSION = False
 
 # Other Settings
 ID_DELIMITER = "-"              # NOT IN GUI    # Delimiter to extract subject ID from sample ID for paired or subject-based analysis
+P_THRESHOLD = 0.05
+LOG_FC_THRESHOLD = 0         # 0.58 standard (1.5x), 0.38 relaxed (1.3x), 0.26 very relaxed (1.2x), 0 any change (p-value only)
 LIMMA_IS_PAIRED = True          # NOT IN GUI    # Set to True for paired limma analysis (requires subject IDs in ID column)
                                 # Recommend and give the option to switch if pairs exist/don't exist in condition column when limma is run
 REPLACE_VALS_WITH_DELTAS = True         # If true makes and additional slector visible to choose which column to calculate delta for, Aand runs tests on delta values - turns limma into an interaction analysis
                                 # e.g. get the difference from d0 to d14 for both groups and compare those differences (difference of differences)
-DELTA_COLUMN = "Time"           # Column to calculate delta on if REPLACE_VALS_WITH_DELTAS is True
+                                # ALSO OVERWRITES LIMMA_IS_PAIRED: sets to false - pairs are now combined into single delta value
+
+
+# # ADD A WAY TO CONTROL WHICH GROUP TO  USE FOR TIME COMPARISON
+# ORIGINAL_DATA_DF = ORIGINAL_DATA_DF[ORIGINAL_DATA_DF['Group'] == 'Resp']
+# ORIGINAL_DATA_DF.reset_index(drop=True, inplace=True)
+
+# # ADD A WAY TO CONTROL WHICH TIME TO USE FOR GROUP COMPARISON
+ORIGINAL_DATA_DF = ORIGINAL_DATA_DF[ORIGINAL_DATA_DF['Time'] == 'D14']
+ORIGINAL_DATA_DF.reset_index(drop=True, inplace=True)
+
+
 
 # add settings for groupwise missing value filtering threshold etc. 
 # - make sure toggles added to gui
@@ -168,7 +182,7 @@ def run_gui_selector():
     root.title("Proteomics Analysis")
     root.geometry("650x850")
     icon_img = tk.PhotoImage(file="logo.png")   # otters are important and this should be considered when running the script
-    root.iconphoto(False, icon_img)
+    root.iconphoto(True, icon_img)
 
     # --- Variables Linked to GUI Widgets ---
     v_input_path = tk.StringVar(value=INPUT_FILE_PATH)
@@ -419,7 +433,7 @@ try:
     ORIGINAL_DATA_DF = pd.read_excel(INPUT_FILE_PATH, sheet_name=SHEET_NAME)
     
     # Calculate protein columns based on others selected
-    excluded_cols = {ID_COLUMN} | {CONDITION_COLUMN} | set(UNNEEDED_COLUMNS)
+    excluded_cols = {ID_COLUMN, CONDITION_COLUMN, DELTA_COLUMN} | set(UNNEEDED_COLUMNS)
     PROTEIN_COLUMNS  = [col for col in ORIGINAL_DATA_DF.columns if col not in excluded_cols]
     
     print(f"Condition: {CONDITION_COLUMN}")
@@ -557,7 +571,7 @@ def derive_subject_ids(sample_id_list, delimiter=ID_DELIMITER):
 
 
 ##################################################################
-# SWITCH TO DELATA MODE
+# SWITCH TO DELTA MODE
 ##################################################################
 '''
 If selected in GUI, ENTIRE dataset is converted to difference scores based on selected DELTA_COLUMN
@@ -569,6 +583,7 @@ if REPLACE_VALS_WITH_DELTAS:
     print(f"TRANSFORMING DATA: Calculating Deltas based on '{DELTA_COLUMN}'")
     print("="*65)
 
+
     # Check selected delta column exists
     if DELTA_COLUMN not in ORIGINAL_DATA_DF.columns:
         print(f"ERROR: Selected Delta Column '{DELTA_COLUMN}' not found in data.")
@@ -576,9 +591,10 @@ if REPLACE_VALS_WITH_DELTAS:
 
     # Get subject IDs to caluclate change for
     print(f"Deriving subjects using delimiter '{ID_DELIMITER}'...")
-    subjects = [str(s).split(ID_DELIMITER)[0] for s in ORIGINAL_DATA_DF[ID_COLUMN]]
+    subjects = derive_subject_ids(ORIGINAL_DATA_DF[ID_COLUMN].tolist(), delimiter=ID_DELIMITER)
     
     df_work = ORIGINAL_DATA_DF.copy()
+    df_work = impute_missing_vals(df_work)
     df_work['Temp_Subject_ID'] = subjects
 
     # Identify timepoints - NEED MORE ROBUST METHOD HERE - NEED TO HANDLE IF THERE ARE MORE THAN TWO TIME POINTS OR THEY GET SORTE INTOT HE WRONG ORDER
@@ -596,16 +612,17 @@ if REPLACE_VALS_WITH_DELTAS:
 
     # Calculate delta
     try:
-        if df_work.duplicated(subset=['Temp_Subject_ID', DELTA_COLUMN]).any():                          # Check for duplicates
+        # Check for duplicates
+        if df_work.duplicated(subset=['Temp_Subject_ID', DELTA_COLUMN]).any():                          
             print("Error: Duplicate samples found (Same Subject + Same Timepoint). Cannot pivot.")
             sys.exit(1)
 
         df_pivot = df_work.pivot(index='Temp_Subject_ID', columns=DELTA_COLUMN, values=PROTEIN_COLUMNS) # Pivot: Index=Subject, Columns=Time, Values=Proteins
-        df_delta = df_pivot[t_end] - df_pivot[t_start]
+        vals_end = df_pivot.xs(t_end, axis=1, level=DELTA_COLUMN)
+        vals_start = df_pivot.xs(t_start, axis=1, level=DELTA_COLUMN)
+        df_delta = vals_end - vals_start
         
-        # Drop subjects without complete pairs
         n_original = len(df_pivot)
-        df_delta = df_delta.dropna() # Drops rows with any NaNs
         n_final = len(df_delta)
         
         print(f"Subjects with complete pairs: {n_final} (Dropped {n_original - n_final})")
@@ -622,12 +639,12 @@ if REPLACE_VALS_WITH_DELTAS:
         # Ensure limma runs as independent, since pairs have been combiend into single delta value
         LIMMA_IS_PAIRED = False 
         
-        print("SUCCESS: Global dataset replaced with Delta values.")
-        print("All selected tests (Limma, Logistic Regression, etc.) will analyze these Deltas.")
+        print("SUCCESS: dataset values replaced with delta values")
+        print("All selected tests (Limma, Logistic Regression, etc.) will run on these deltas")
         print("-" * 65 + "\n")
 
     except Exception as e:
-        print(f"Error during Delta Calculation: {e}")
+        print(f"Error during delta calculation: {e}")
         sys.exit(1)
 
 
@@ -746,8 +763,8 @@ if RUN_LIMMA:
         print(f"Saved Limma results to: {limma_out_path}")
         
         # Identify Significant Proteins
-        sig_proteins = df_results[(df_results['adj.P.Val'] < 0.05) & (abs(df_results['logFC']) > 0.58)]
-        print(f"Significant Proteins (adj.P < 0.05 & |logFC| > 0.58): {len(sig_proteins)}")
+        sig_proteins = df_results[(df_results['adj.P.Val'] < P_THRESHOLD) & (abs(df_results['logFC']) > LOG_FC_THRESHOLD)]
+        print(f"Significant Proteins (adj.P < {P_THRESHOLD} & |logFC| > {LOG_FC_THRESHOLD}): {len(sig_proteins)}")
 
         # 4. VOLCANO PLOT
         pdf_path = os.path.join(OUTPUT_FILE_PATH, "Limma_Volcano_Plot.pdf")
