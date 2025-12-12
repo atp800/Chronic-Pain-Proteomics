@@ -118,7 +118,9 @@ ID_COLUMN       = "Sample_ID"
 CONDITION_COLUMN = "Group"
 DELTA_COLUMN = "Time"           # Column to calculate delta on if REPLACE_VALS_WITH_DELTAS is True
 UNNEEDED_COLUMNS = ["Time"]    # CHECK SELECTED COLUMNS ARE ACTUALLY BEING REMOVED FROM ANALYSIS                                             # use for unneeded columns
-PROTEIN_COLUMNS  = [col for col in ORIGINAL_DATA_DF.columns if (col not in ID_COLUMN and col not in UNNEEDED_COLUMNS and col != CONDITION_COLUMN and col != DELTA_COLUMN)]  
+FILTER_COLUMN = None
+FILTER_VALUE = None
+PROTEIN_COLUMNS  = [col for col in ORIGINAL_DATA_DF.columns if (col not in ID_COLUMN and col not in UNNEEDED_COLUMNS and col != CONDITION_COLUMN and col != DELTA_COLUMN and col != FILTER_COLUMN)]  
 
 # Pre-Processing Settings
 ALREADY_LOG2 = True             # NOT IMPLEMENTED
@@ -134,22 +136,12 @@ RUN_LOGISTIC_REGRESSION = False
 # Other Settings
 ID_DELIMITER = "-"              # NOT IN GUI    # Delimiter to extract subject ID from sample ID for paired or subject-based analysis
 P_THRESHOLD = 0.05
-LOG_FC_THRESHOLD = 0         # 0.58 standard (1.5x), 0.38 relaxed (1.3x), 0.26 very relaxed (1.2x), 0 any change (p-value only)
-LIMMA_IS_PAIRED = True          # NOT IN GUI    # Set to True for paired limma analysis (requires subject IDs in ID column)
+LOG_FC_THRESHOLD = 0       # 0.58 standard (1.5x), 0.38 relaxed (1.3x), 0.26 very relaxed (1.2x), 0 any change (p-value only)
+LIMMA_IS_PAIRED = False         # Set to True for paired limma analysis (requires subject IDs in ID column)
                                 # Recommend and give the option to switch if pairs exist/don't exist in condition column when limma is run
 REPLACE_VALS_WITH_DELTAS = True         # If true makes and additional slector visible to choose which column to calculate delta for, Aand runs tests on delta values - turns limma into an interaction analysis
                                 # e.g. get the difference from d0 to d14 for both groups and compare those differences (difference of differences)
                                 # ALSO OVERWRITES LIMMA_IS_PAIRED: sets to false - pairs are now combined into single delta value
-
-
-# # ADD A WAY TO CONTROL WHICH GROUP TO  USE FOR TIME COMPARISON
-# ORIGINAL_DATA_DF = ORIGINAL_DATA_DF[ORIGINAL_DATA_DF['Group'] == 'Resp']
-# ORIGINAL_DATA_DF.reset_index(drop=True, inplace=True)
-
-# # ADD A WAY TO CONTROL WHICH TIME TO USE FOR GROUP COMPARISON
-ORIGINAL_DATA_DF = ORIGINAL_DATA_DF[ORIGINAL_DATA_DF['Time'] == 'D14']
-ORIGINAL_DATA_DF.reset_index(drop=True, inplace=True)
-
 
 
 # add settings for groupwise missing value filtering threshold etc. 
@@ -157,7 +149,6 @@ ORIGINAL_DATA_DF.reset_index(drop=True, inplace=True)
 # - split toggles by tests they apply to??
 
 # add ID_DELIMETER setting to gui
-# add LIMMA_IS_PAIRED setting to gui
 
 # Check ID coliumn is unique. 
 # If not warn user and append condition with a hyphen.
@@ -175,14 +166,37 @@ def run_gui_selector():
     # Use global keywords to update the actual variables at the top of the script
     global INPUT_FILE_PATH, SHEET_NAME, OUTPUT_FILE_PATH
     global ID_COLUMN, CONDITION_COLUMN, UNNEEDED_COLUMNS, DELTA_COLUMN
-    global ALREADY_LOG2, ALREADY_NORMALISED, REPLACE_VALS_WITH_DELTAS
-    global RUN_PCA, RUN_LIMMA, RUN_SPEARMANS, RUN_LASSO, RUN_LOGISTIC_REGRESSION
+    global FILTER_COLUMN, FILTER_VALUE
+    
+    # NOTE: Boolean globals are now updated dynamically via the dictionary keys below
+    
+    # --- 1. CONFIGURATION DICTIONARIES ---
+    # Format: "Global_Variable_Name": "Display Label"
+    
+    DATA_SETTINGS = {
+        "ALREADY_LOG2":             "Data Already Log2 Transformed",
+        "ALREADY_NORMALISED":       "Data Already Normalised",
+        "REPLACE_VALS_WITH_DELTAS": "Replace Values With Deltas (Interaction Analysis)",
+        "LIMMA_IS_PAIRED":          "Paired Limma (turn off for independent)"
+    }
+
+    TEST_SETTINGS = {
+        "RUN_PCA":                  "Run PCA",
+        "RUN_LIMMA":                "Run Limma",
+        "RUN_SPEARMANS":            "Run Spearmans",
+        "RUN_LASSO":                "Run LASSO",
+        "RUN_LOGISTIC_REGRESSION":  "Run Logistic Regression"
+    }
 
     root = tk.Tk()
     root.title("Proteomics Analysis")
     root.geometry("650x850")
-    icon_img = tk.PhotoImage(file="logo.png")   # otters are important and this should be considered when running the script
-    root.iconphoto(True, icon_img)
+    
+    try:
+        icon_img = tk.PhotoImage(file="logo.png") 
+        root.iconphoto(True, icon_img)
+    except:
+        pass # Gracefully fail if logo missing
 
     # --- Variables Linked to GUI Widgets ---
     v_input_path = tk.StringVar(value=INPUT_FILE_PATH)
@@ -191,28 +205,59 @@ def run_gui_selector():
     v_condition = tk.StringVar(value=CONDITION_COLUMN)
     v_id_col = tk.StringVar(value=ID_COLUMN)
     v_delta_col = tk.StringVar(value=DELTA_COLUMN)
+    v_filter_col = tk.StringVar(value=str(FILTER_COLUMN) if FILTER_COLUMN else "None")
+    v_filter_val = tk.StringVar(value=str(FILTER_VALUE) if FILTER_VALUE else "")
     
-    v_log2 = tk.BooleanVar(value=ALREADY_LOG2)
-    v_norm = tk.BooleanVar(value=ALREADY_NORMALISED)
-    v_pca = tk.BooleanVar(value=RUN_PCA)
-    v_limma = tk.BooleanVar(value=RUN_LIMMA)
-    v_spearman = tk.BooleanVar(value=RUN_SPEARMANS)
-    v_lasso = tk.BooleanVar(value=RUN_LASSO)
-    v_logistic = tk.BooleanVar(value=RUN_LOGISTIC_REGRESSION)
-    v_calc_deltas = tk.BooleanVar(value=REPLACE_VALS_WITH_DELTAS)
+    # Store all boolean variables here: { 'Global_Name': BooleanVar }
+    bool_vars = {}
 
-    # Ensure this defaults to a standard boolean (False if None) to avoid third state (line through box)
-    initial_delta = bool(REPLACE_VALS_WITH_DELTAS)
-    v_calc_deltas = tk.BooleanVar(value=initial_delta)
+    # Initialize BooleanVars dynamically based on current Global values
+    all_toggles = {**DATA_SETTINGS, **TEST_SETTINGS}
+    for var_name in all_toggles:
+        current_val = globals().get(var_name, False) # Get current global value, default False
+        bool_vars[var_name] = tk.BooleanVar(value=current_val)
 
-    # Toggle function to active delta column selector
+    # Toggle function to activate delta column selector
     def toggle_delta_selector(*args):
-        if v_calc_deltas.get():
-            cb_delta.config(state="readonly") # Enable dropdown
+        # Access the specific boolean var for the delta setting
+        if bool_vars["REPLACE_VALS_WITH_DELTAS"].get():
+            cb_delta.config(state="readonly") 
         else:
-            cb_delta.config(state="disabled") # Disable dropdown
-    # Attach the listener to variable to run every time it changes
-    v_calc_deltas.trace_add("write", toggle_delta_selector)
+            cb_delta.config(state="disabled")           
+    bool_vars["REPLACE_VALS_WITH_DELTAS"].trace_add("write", toggle_delta_selector)      # Attach listener to the delta variable
+
+    # --- Logic: Filter Value Updater ---
+    def update_filter_values(event=None):
+        """Reads the file to get unique values for the selected filter column"""
+        col = v_filter_col.get()
+        path = v_input_path.get()
+        sheet = v_sheet.get()
+
+        if col == "None" or not col or not os.path.exists(path):
+            cb_filter_val.set("")
+            cb_filter_val['values'] = []
+            cb_filter_val.config(state="disabled")
+            return
+
+        cb_filter_val.config(state="readonly")
+        
+        try:
+            # Read only the selected column to save memory
+            df = pd.read_excel(path, sheet_name=sheet, usecols=[col])
+            unique_vals = df[col].dropna().unique()
+            # Convert to strings for the dropdown
+            unique_vals_str = sorted([str(x) for x in unique_vals])
+            
+            cb_filter_val['values'] = unique_vals_str
+            
+            # Reset value if current selection isn't in the new list
+            if v_filter_val.get() not in unique_vals_str and len(unique_vals_str) > 0:
+                v_filter_val.set(unique_vals_str[0])
+                
+        except Exception as e:
+            print(f"Error loading unique values for filter: {e}")
+            cb_filter_val['values'] = []
+
 
     # --- Helper: Update Column Lists based on Sheet ---
     def load_columns(event=None):
@@ -220,29 +265,25 @@ def run_gui_selector():
         sheet = v_sheet.get()
         if os.path.exists(path) and sheet:
             try:
-                # Read header only
                 df = pd.read_excel(path, sheet_name=sheet, nrows=0)
                 cols = list(df.columns)
                 
-                # Put columns from excel sheet into selectors
                 cb_id['values'] = cols 
                 cb_condition['values'] = cols
                 cb_delta['values'] = cols 
+                filter_opts = ["None"] + cols
+                cb_filter_col['values'] = filter_opts
                 
                 lb_unneeded.delete(0, tk.END)
-                
                 for i, col in enumerate(cols):
                     lb_unneeded.insert(tk.END, col)
-                    
-                    # Pre-select defaults if they match
                     if UNNEEDED_COLUMNS and col in UNNEEDED_COLUMNS:
                         lb_unneeded.selection_set(i)
                 
-                # Set Defaults
+                # Set Defaults if they exist in file
                 if ID_COLUMN in cols: v_id_col.set(ID_COLUMN)
                 if CONDITION_COLUMN in cols: v_condition.set(CONDITION_COLUMN)
                 if DELTA_COLUMN in cols: v_delta_col.set(DELTA_COLUMN)
-
             except Exception as e:
                 print(f"Error loading columns: {e}")
 
@@ -256,7 +297,7 @@ def run_gui_selector():
                     v_sheet.set(SHEET_NAME)
                 else:
                     v_sheet.set(xl.sheet_names[0])
-                load_columns() # Load columns for the default sheet
+                load_columns()
             except:
                 pass
 
@@ -271,35 +312,32 @@ def run_gui_selector():
         if d: v_output_path.set(d)
 
     def on_submit():
-        # Update global variables
+        # Update Standard Globals
         global INPUT_FILE_PATH, SHEET_NAME, OUTPUT_FILE_PATH, CONDITION_COLUMN
         global ID_COLUMN, UNNEEDED_COLUMNS, DELTA_COLUMN
-        global ALREADY_LOG2, ALREADY_NORMALISED, REPLACE_VALS_WITH_DELTAS
-        global RUN_PCA, RUN_LIMMA, RUN_SPEARMANS, RUN_LASSO
 
         INPUT_FILE_PATH = v_input_path.get()
         SHEET_NAME = v_sheet.get()
         OUTPUT_FILE_PATH = v_output_path.get()
-        
-        # Get dropdown values
         CONDITION_COLUMN = v_condition.get()
         ID_COLUMN = v_id_col.get()
         DELTA_COLUMN = v_delta_col.get()
+
+        # Handle Filter Logic
+        f_col = v_filter_col.get()
+        if f_col == "None" or f_col == "":
+            FILTER_COLUMN = None
+            FILTER_VALUE = None
+        else:
+            FILTER_COLUMN = f_col
+            FILTER_VALUE = v_filter_val.get()
         
-        # Get listbox selections
         all_options = lb_unneeded.get(0, tk.END)
         UNNEEDED_COLUMNS = [all_options[i] for i in lb_unneeded.curselection()]
 
-        # Get toggle values
-        ALREADY_LOG2 = v_log2.get()
-        ALREADY_NORMALISED = v_norm.get()
-        REPLACE_VALS_WITH_DELTAS = v_calc_deltas.get()
-
-        RUN_PCA = v_pca.get()
-        RUN_LIMMA = v_limma.get()
-        RUN_SPEARMANS = v_spearman.get()
-        RUN_LASSO = v_lasso.get()
-        RUN_LOGISTIC_REGRESSION = v_logistic.get()
+        # Update Boolean Globals
+        for var_name, tk_var in bool_vars.items():
+            globals()[var_name] = tk_var.get()
 
         root.destroy()
 
@@ -328,64 +366,75 @@ def run_gui_selector():
     lf_cols = ttk.LabelFrame(root, text="Column Definitions", padding=pad)
     lf_cols.pack(fill="both", expand=True, padx=pad, pady=pad)
     
-    # Configure grid: Col 0 for Dropdowns, Col 1 for Listbox
     lf_cols.columnconfigure(0, weight=1)
     lf_cols.columnconfigure(1, weight=1)
 
     # LEFT SIDE    
-    # ID Column (single-select dropdown)
     ttk.Label(lf_cols, text="Sample ID Column:").grid(row=0, column=0, sticky="w")
     cb_id = ttk.Combobox(lf_cols, textvariable=v_id_col, width=30)
-    cb_id.grid(row=1, column=0, sticky="w", padx=pad, pady=(0, 15)) # Add spacing below
+    cb_id.grid(row=1, column=0, sticky="w", padx=pad, pady=(0, 15))
 
-    # Condition Column (single-select dropdown)
     ttk.Label(lf_cols, text="Group/Condition Column:").grid(row=2, column=0, sticky="w")
     cb_condition = ttk.Combobox(lf_cols, textvariable=v_condition, width=30)
     cb_condition.grid(row=3, column=0, sticky="w", padx=pad)
 
-    # Delta Column (single-select dropdown)
-    ttk.Label(lf_cols, text="Delta Column (for limma interaction analysis):").grid(row=4, column=0, sticky="w")
-    cb_delta = ttk.Combobox(lf_cols, textvariable=v_delta_col, width=30, state="disabled") # Start disabled
+    ttk.Label(lf_cols, text="Delta Column (for interaction analysis):").grid(row=4, column=0, sticky="w")
+    cb_delta = ttk.Combobox(lf_cols, textvariable=v_delta_col, width=30, state="disabled") 
     cb_delta.grid(row=5, column=0, sticky="w", padx=pad, pady=(0, 5))
 
+    ttk.Label(lf_cols, text="Filter Data By Column:").grid(row=6, column=0, sticky="w")
+    cb_filter_col = ttk.Combobox(lf_cols, textvariable=v_filter_col, width=30)
+    cb_filter_col.grid(row=7, column=0, sticky="w", padx=pad, pady=(0, 5))
+    cb_filter_col.bind("<<ComboboxSelected>>", update_filter_values) # Bind event
+
+    ttk.Label(lf_cols, text="Keep Filter Value:").grid(row=8, column=0, sticky="w")
+    cb_filter_val = ttk.Combobox(lf_cols, textvariable=v_filter_val, width=30, state="disabled")
+    cb_filter_val.grid(row=9, column=0, sticky="w", padx=pad, pady=(0, 5))
+
     # RIGHT SIDE    
-    # Unneeded Columns (multi-select)
-    ttk.Label(lf_cols, text="Unneeded/Metadata Columns (can select multiple):").grid(row=0, column=1, sticky="w")
-    
-    # Wrapper Frame for Listbox + Scrollbar
+    ttk.Label(lf_cols, text="Unneeded/Metadata Columns to Exclude From Analysis: \n(ID, group, delta and filter columns will be excluded too)").grid(row=0, column=1, sticky="w")
     frame_lb_un = ttk.Frame(lf_cols)
-    # Span multiple rows so it stands tall next to the two dropdowns on the left
-    frame_lb_un.grid(row=1, column=1, rowspan=4, sticky="nsew", padx=pad)
-    
+    frame_lb_un.grid(row=1, column=1, rowspan=9, sticky="nsew", padx=pad)
     sb_un = ttk.Scrollbar(frame_lb_un)
     sb_un.pack(side="right", fill="y")
-    
     lb_unneeded = tk.Listbox(frame_lb_un, selectmode="multiple", height=8, exportselection=False, yscrollcommand=sb_un.set)
     lb_unneeded.pack(side="left", fill="both", expand=True)
-    
     sb_un.config(command=lb_unneeded.yview)
 
 
-    # 3. Settings Frame
-    lf_sets = ttk.LabelFrame(root, text="Analysis Settings", padding=pad)
+    # 3. Settings Frame (Dynamic Generation)
+    lf_sets = ttk.LabelFrame(root, text="Analysis Parameters", padding=pad)
     lf_sets.pack(fill="x", padx=pad, pady=pad)
 
-    ttk.Checkbutton(lf_sets, text="Data Already Log2 Transformed", variable=v_log2).grid(row=0, column=0, sticky="w")
-    ttk.Checkbutton(lf_sets, text="Data Already Normalised", variable=v_norm).grid(row=0, column=1, sticky="w")
-    ttk.Checkbutton(lf_sets, text="Replace Values With Deltas (e.g. Interaction Analysis)", variable=v_calc_deltas).grid(row=1, column=0, columnspan=2, sticky="w", pady=5)
+    # Function to create a grid of checkboxes from a dictionary
+    def create_checkbox_grid(parent_frame, settings_dict, start_row=0, cols=2):
+        row = start_row
+        col = 0
+        for var_name, label_text in settings_dict.items():
+            chk = ttk.Checkbutton(parent_frame, text=label_text, variable=bool_vars[var_name])
+            chk.grid(row=row, column=col, sticky="w", padx=10, pady=2)
+            
+            # Move to next grid position
+            col += 1
+            if col >= cols:
+                col = 0
+                row += 1
+        return row + 1 # Return next available row index
 
-    ttk.Separator(lf_sets, orient='horizontal').grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
+    # Generate Data Settings
+    ttk.Label(lf_sets, text="Pre-Processing:", font=('Segoe UI', 9, 'bold')).grid(row=0, column=0, sticky="w", pady=(0,5))
+    next_row = create_checkbox_grid(lf_sets, DATA_SETTINGS, start_row=1)
+    ttk.Separator(lf_sets, orient='horizontal').grid(row=next_row, column=0, columnspan=2, sticky="ew", pady=10)
+    next_row += 1
 
-    ttk.Checkbutton(lf_sets, text="Run PCA", variable=v_pca).grid(row=3, column=0, sticky="w")
-    ttk.Checkbutton(lf_sets, text="Run Limma", variable=v_limma).grid(row=3, column=1, sticky="w")
-    ttk.Checkbutton(lf_sets, text="Run Spearmans", variable=v_spearman).grid(row=4, column=0, sticky="w")
-    ttk.Checkbutton(lf_sets, text="Run LASSO", variable=v_lasso).grid(row=4, column=1, sticky="w")
-    ttk.Checkbutton(lf_sets, text="Run Logistic Regression", variable=v_logistic).grid(row=5, column=0, sticky="w")
+    # Generate Test Settings
+    ttk.Label(lf_sets, text="Tests to Run:", font=('Segoe UI', 9, 'bold')).grid(row=next_row, column=0, sticky="w", pady=(0,5))
+    create_checkbox_grid(lf_sets, TEST_SETTINGS, start_row=next_row+1)
 
     # Run Button
     ttk.Button(root, text="RUN ANALYSIS", command=on_submit).pack(pady=10, ipady=5, fill="x", padx=20)
 
-    # CLose Button
+    # Close Handler
     def on_closing():
         root.destroy()
         sys.exit("Analysis cancelled")
@@ -394,7 +443,7 @@ def run_gui_selector():
     # Initial Load
     if os.path.exists(INPUT_FILE_PATH):
         update_sheet_list()
-    toggle_delta_selector() # Run once to set initial state
+    toggle_delta_selector() 
     
     root.mainloop()
 
@@ -414,30 +463,58 @@ if UNNEEDED_COLUMNS is None: UNNEEDED_COLUMNS = []
 # START ANALYSIS
 ##################################################################
 
-print(f"Loading: {INPUT_FILE_PATH} | Sheet: {SHEET_NAME}")
+print("\n" + "="*60)
+print("ANALYSIS CONFIGURATION")
+print("="*60)
 
-print("-- Parameters --")
-print(f" Output Folder: {OUTPUT_FILE_PATH}")
-print(f" ID Column: {ID_COLUMN}")
-print(f" Condition Column: {CONDITION_COLUMN}")
-print(f" Unneeded Columns: {UNNEEDED_COLUMNS}")
+print("--- Data Sources & Columns ---")
+print(f" Input File:       {INPUT_FILE_PATH}")
+print(f" Sheet Name:       {SHEET_NAME}")
+print(f" Output Folder:    {OUTPUT_FILE_PATH}")
+print(f" Sample ID Col:    {ID_COLUMN}")
+print(f" Condition Col:    {CONDITION_COLUMN}")
+print(f" Delta Col:        {DELTA_COLUMN if REPLACE_VALS_WITH_DELTAS else '(Not Used)'}")
+print(f" Ignored Cols:     {UNNEEDED_COLUMNS}")
+if FILTER_VALUE != None: 
+    print(f" Filter Data By:   {FILTER_COLUMN} where value is {FILTER_VALUE}") 
+else: 
+    print("No Filter Applied")
 
-print("Running tests:")
-if RUN_PCA: print(" - PCA")
-if RUN_LIMMA: print(" - Limma")
-if RUN_SPEARMANS: print(" - Spearmans")
-if RUN_LASSO: print(" - LASSO")
-if RUN_LOGISTIC_REGRESSION: print(" - LOGSITC REGRESSION")
+print("\n--- Processing Settings ---")
+print(f" ID Delimiter:            '{ID_DELIMITER}'")
+print(f" Data is Log2:            {ALREADY_LOG2}")
+print(f" Data is Normalised:      {ALREADY_NORMALISED}")
+print(f" Replace with Deltas:     {REPLACE_VALS_WITH_DELTAS}")
+print(f" Limma as Paired:         {LIMMA_IS_PAIRED}")
+
+print("\n--- Statistical Thresholds ---")
+print(f" P-Value Cutoff:   {P_THRESHOLD}")
+print(f" LogFC Cutoff:     {LOG_FC_THRESHOLD}")
+
+print("\n--- Tests Selected ---")
+if RUN_PCA: print("PCA")
+if RUN_LIMMA: print("Limma")
+if RUN_SPEARMANS: print("Spearmans")
+if RUN_LASSO: print("LASSO")
+if RUN_LOGISTIC_REGRESSION: print("Logistic Regression")
+
+
+print("="*60 + "\n")
 
 try:
     ORIGINAL_DATA_DF = pd.read_excel(INPUT_FILE_PATH, sheet_name=SHEET_NAME)
     
     # Calculate protein columns based on others selected
-    excluded_cols = {ID_COLUMN, CONDITION_COLUMN, DELTA_COLUMN} | set(UNNEEDED_COLUMNS)
+    excluded_cols = {ID_COLUMN, CONDITION_COLUMN, DELTA_COLUMN, FILTER_COLUMN} | set(UNNEEDED_COLUMNS)
     PROTEIN_COLUMNS  = [col for col in ORIGINAL_DATA_DF.columns if col not in excluded_cols]
     
+    if(FILTER_COLUMN != None):
+        ORIGINAL_DATA_DF = ORIGINAL_DATA_DF[ORIGINAL_DATA_DF[FILTER_COLUMN] == FILTER_VALUE]
+        ORIGINAL_DATA_DF.reset_index(drop=True, inplace=True)
+
     print(f"Condition: {CONDITION_COLUMN}")
     print(f"Proteins Identified: {len(PROTEIN_COLUMNS)}")
+
 
 except Exception as e:
     print(f"Error loading data: {e}")
