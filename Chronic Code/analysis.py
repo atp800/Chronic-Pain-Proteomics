@@ -116,7 +116,7 @@ OUTPUT_FILE_PATH = "Chronic Code/Analysis_Output"
 # Column Names
 ID_COLUMN       = "Sample" 
 CONDITION_COLUMN = "Group"
-UNNEEDED_COLUMNS = ["Time"]                                                     # use for unneeded columns
+UNNEEDED_COLUMNS = ["Time"]    # CHECK SELECTED COLUMNS ARE ACTUALLY BEING REMOVED FROM ANALYSIS                                             # use for unneeded columns
 PROTEIN_COLUMNS  = [col for col in ORIGINAL_DATA_DF.columns if (col not in ID_COLUMN and col not in UNNEEDED_COLUMNS and col != CONDITION_COLUMN)]  
 
 # Pre-Processing Settings
@@ -134,9 +134,9 @@ RUN_LOGISTIC_REGRESSION = False
 ID_DELIMITER = "-"              # NOT IN GUI    # Delimiter to extract subject ID from sample ID for paired or subject-based analysis
 LIMMA_IS_PAIRED = True          # NOT IN GUI    # Set to True for paired limma analysis (requires subject IDs in ID column)
                                 # Recommend and give the option to switch if pairs exist/don't exist in condition column when limma is run
-LIMMA_DELTA_COMPARISON = True         # If true makes and additional slector visible to choose which column to calculate delta for, and turns limma into an interaction analysis
+REPLACE_VALS_WITH_DELTAS = True         # If true makes and additional slector visible to choose which column to calculate delta for, Aand runs tests on delta values - turns limma into an interaction analysis
                                 # e.g. get the difference from d0 to d14 for both groups and compare those differences (difference of differences)
-DELTA_COLUMN = "Time"           # Column to calculate delta on if DELTA_COMPARISON is True
+DELTA_COLUMN = "Time"           # Column to calculate delta on if REPLACE_VALS_WITH_DELTAS is True
 
 # add settings for groupwise missing value filtering threshold etc. 
 # - make sure toggles added to gui
@@ -158,16 +158,16 @@ DELTA_COLUMN = "Time"           # Column to calculate delta on if DELTA_COMPARIS
 # GUI CONFIGURATION
 ##################################################################
 def run_gui_selector():
-    # Use global keywords so we update the actual variables at the top of the script
+    # Use global keywords to update the actual variables at the top of the script
     global INPUT_FILE_PATH, SHEET_NAME, OUTPUT_FILE_PATH
     global ID_COLUMN, CONDITION_COLUMN, UNNEEDED_COLUMNS, DELTA_COLUMN
-    global ALREADY_LOG2, ALREADY_NORMALISED, LIMMA_DELTA_COMPARISON
+    global ALREADY_LOG2, ALREADY_NORMALISED, REPLACE_VALS_WITH_DELTAS
     global RUN_PCA, RUN_LIMMA, RUN_SPEARMANS, RUN_LASSO, RUN_LOGISTIC_REGRESSION
 
     root = tk.Tk()
     root.title("Proteomics Analysis")
     root.geometry("650x850")
-    icon_img = tk.PhotoImage(file="logo.png") 
+    icon_img = tk.PhotoImage(file="logo.png")   # otters are important and this should be considered when running the script
     root.iconphoto(False, icon_img)
 
     # --- Variables Linked to GUI Widgets ---
@@ -185,18 +185,18 @@ def run_gui_selector():
     v_spearman = tk.BooleanVar(value=RUN_SPEARMANS)
     v_lasso = tk.BooleanVar(value=RUN_LASSO)
     v_logistic = tk.BooleanVar(value=RUN_LOGISTIC_REGRESSION)
-    v_calc_deltas = tk.BooleanVar(value=LIMMA_DELTA_COMPARISON)
+    v_calc_deltas = tk.BooleanVar(value=REPLACE_VALS_WITH_DELTAS)
 
     # Ensure this defaults to a standard boolean (False if None) to avoid third state (line through box)
-    initial_delta = bool(LIMMA_DELTA_COMPARISON)
+    initial_delta = bool(REPLACE_VALS_WITH_DELTAS)
     v_calc_deltas = tk.BooleanVar(value=initial_delta)
 
     # Toggle function to active delta column selector
     def toggle_delta_selector(*args):
         if v_calc_deltas.get():
-            cb_time.config(state="readonly") # Enable dropdown
+            cb_delta.config(state="readonly") # Enable dropdown
         else:
-            cb_time.config(state="disabled") # Disable dropdown
+            cb_delta.config(state="disabled") # Disable dropdown
     # Attach the listener to variable to run every time it changes
     v_calc_deltas.trace_add("write", toggle_delta_selector)
 
@@ -210,10 +210,10 @@ def run_gui_selector():
                 df = pd.read_excel(path, sheet_name=sheet, nrows=0)
                 cols = list(df.columns)
                 
-                # Update UI lists
-                # Note: ID is now a combobox (cb_id), not a listbox (lb_id)
+                # Put columns from excel sheet into selectors
                 cb_id['values'] = cols 
                 cb_condition['values'] = cols
+                cb_delta['values'] = cols 
                 
                 lb_unneeded.delete(0, tk.END)
                 
@@ -257,28 +257,29 @@ def run_gui_selector():
         if d: v_output_path.set(d)
 
     def on_submit():
-        # UPDATE GLOBAL VARIABLES
+        # Update global variables
         global INPUT_FILE_PATH, SHEET_NAME, OUTPUT_FILE_PATH, CONDITION_COLUMN
         global ID_COLUMN, UNNEEDED_COLUMNS, DELTA_COLUMN
-        global ALREADY_LOG2, ALREADY_NORMALISED, LIMMA_DELTA_COMPARISON
+        global ALREADY_LOG2, ALREADY_NORMALISED, REPLACE_VALS_WITH_DELTAS
         global RUN_PCA, RUN_LIMMA, RUN_SPEARMANS, RUN_LASSO
 
         INPUT_FILE_PATH = v_input_path.get()
         SHEET_NAME = v_sheet.get()
         OUTPUT_FILE_PATH = v_output_path.get()
         
-        # Get Dropdown values (Single String)
+        # Get dropdown values
         CONDITION_COLUMN = v_condition.get()
         ID_COLUMN = v_id_col.get()
         DELTA_COLUMN = v_delta_col.get()
         
-        # Get Listbox selections (List)
+        # Get listbox selections
         all_options = lb_unneeded.get(0, tk.END)
         UNNEEDED_COLUMNS = [all_options[i] for i in lb_unneeded.curselection()]
 
+        # Get toggle values
         ALREADY_LOG2 = v_log2.get()
         ALREADY_NORMALISED = v_norm.get()
-        LIMMA_DELTA_COMPARISON = v_calc_deltas.get()
+        REPLACE_VALS_WITH_DELTAS = v_calc_deltas.get()
 
         RUN_PCA = v_pca.get()
         RUN_LIMMA = v_limma.get()
@@ -330,8 +331,8 @@ def run_gui_selector():
 
     # Delta Column (single-select dropdown)
     ttk.Label(lf_cols, text="Delta Column (for limma interaction analysis):").grid(row=4, column=0, sticky="w")
-    cb_time = ttk.Combobox(lf_cols, textvariable=v_delta_col, width=30, state="disabled") # Start disabled
-    cb_time.grid(row=5, column=0, sticky="w", padx=pad, pady=(0, 5))
+    cb_delta = ttk.Combobox(lf_cols, textvariable=v_delta_col, width=30, state="disabled") # Start disabled
+    cb_delta.grid(row=5, column=0, sticky="w", padx=pad, pady=(0, 5))
 
     # RIGHT SIDE    
     # Unneeded Columns (multi-select)
@@ -357,7 +358,7 @@ def run_gui_selector():
 
     ttk.Checkbutton(lf_sets, text="Data Already Log2 Transformed", variable=v_log2).grid(row=0, column=0, sticky="w")
     ttk.Checkbutton(lf_sets, text="Data Already Normalised", variable=v_norm).grid(row=0, column=1, sticky="w")
-    ttk.Checkbutton(lf_sets, text="Calculate Deltas (Interaction Analysis)", variable=v_calc_deltas).grid(row=1, column=0, columnspan=2, sticky="w", pady=5)
+    ttk.Checkbutton(lf_sets, text="Replace Values With Deltas (e.g. Interaction Analysis)", variable=v_calc_deltas).grid(row=1, column=0, columnspan=2, sticky="w", pady=5)
 
     ttk.Separator(lf_sets, orient='horizontal').grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
 
@@ -554,6 +555,82 @@ def derive_subject_ids(sample_id_list, delimiter=ID_DELIMITER):
     return subject_ids
 
 
+
+##################################################################
+# SWITCH TO DELATA MODE
+##################################################################
+'''
+If selected in GUI, ENTIRE dataset is converted to difference scores based on selected DELTA_COLUMN
+All subsequent tests (Limma, LogReg etc.) will run on the change values
+'''
+
+if REPLACE_VALS_WITH_DELTAS:
+    print("\n" + "="*65)
+    print(f"TRANSFORMING DATA: Calculating Deltas based on '{DELTA_COLUMN}'")
+    print("="*65)
+
+    # Check selected delta column exists
+    if DELTA_COLUMN not in ORIGINAL_DATA_DF.columns:
+        print(f"ERROR: Selected Delta Column '{DELTA_COLUMN}' not found in data.")
+        sys.exit(1)
+
+    # Get subject IDs to caluclate change for
+    print(f"Deriving subjects using delimiter '{ID_DELIMITER}'...")
+    subjects = [str(s).split(ID_DELIMITER)[0] for s in ORIGINAL_DATA_DF[ID_COLUMN]]
+    
+    df_work = ORIGINAL_DATA_DF.copy()
+    df_work['Temp_Subject_ID'] = subjects
+
+    # Identify timepoints - NEED MORE ROBUST METHOD HERE - NEED TO HANDLE IF THERE ARE MORE THAN TWO TIME POINTS OR THEY GET SORTE INTOT HE WRONG ORDER
+    # Sort them to assume Time 2 - Time 1 (e.g., D14 - D0)
+    timepoints = sorted(df_work[DELTA_COLUMN].unique())
+    
+    if len(timepoints) != 2:
+        print(f"CRITICAL ERROR: Delta calculation requires exactly 2 timepoints.")
+        print(f"Found {len(timepoints)} in column '{DELTA_COLUMN}': {timepoints}")
+        sys.exit(1)
+
+    t_start = timepoints[0]
+    t_end   = timepoints[1]
+    print(f"Calculating Change: {t_end} (Final) - {t_start} (Initial)")
+
+    # Calculate delta
+    try:
+        if df_work.duplicated(subset=['Temp_Subject_ID', DELTA_COLUMN]).any():                          # Check for duplicates
+            print("Error: Duplicate samples found (Same Subject + Same Timepoint). Cannot pivot.")
+            sys.exit(1)
+
+        df_pivot = df_work.pivot(index='Temp_Subject_ID', columns=DELTA_COLUMN, values=PROTEIN_COLUMNS) # Pivot: Index=Subject, Columns=Time, Values=Proteins
+        df_delta = df_pivot[t_end] - df_pivot[t_start]
+        
+        # Drop subjects without complete pairs
+        n_original = len(df_pivot)
+        df_delta = df_delta.dropna() # Drops rows with any NaNs
+        n_final = len(df_delta)
+        
+        print(f"Subjects with complete pairs: {n_final} (Dropped {n_original - n_final})")
+
+        # Restore group data (condition column) and ID column - assumes group doesn't change over time
+        subj_group_map = df_work.drop_duplicates('Temp_Subject_ID').set_index('Temp_Subject_ID')[CONDITION_COLUMN]
+        df_delta[CONDITION_COLUMN] = df_delta.index.map(subj_group_map)
+        df_delta[ID_COLUMN] = df_delta.index
+        df_delta.reset_index(drop=True, inplace=True)
+        
+        # Replace the main dataframe with delta dataframe
+        ORIGINAL_DATA_DF = df_delta
+        
+        # Ensure limma runs as independent, since pairs have been combiend into single delta value
+        LIMMA_IS_PAIRED = False 
+        
+        print("SUCCESS: Global dataset replaced with Delta values.")
+        print("All selected tests (Limma, Logistic Regression, etc.) will analyze these Deltas.")
+        print("-" * 65 + "\n")
+
+    except Exception as e:
+        print(f"Error during Delta Calculation: {e}")
+        sys.exit(1)
+
+
 ##################################################################
 # TEST: LIMMA DIFFERENTIAL EXPRESSION
 ##################################################################
@@ -704,13 +781,7 @@ if RUN_LIMMA:
 
 
 
-##################################################################
-# TEST: LIMMA INTERACTION ANALYSIS
-##################################################################
-'''
-if RUN_LIMMA and LIMMA_DELTA_COMPARISON is true
-Compares the difference between two groups (condition column) in change in the delta column (e.g., timepoints)
-'''
+
 
 
 ##################################################################
