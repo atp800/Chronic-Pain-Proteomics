@@ -117,7 +117,7 @@ OUTPUT_FILE_PATH = "Chronic Code/Analysis_Output"
 ID_COLUMN       = "Sample_ID" 
 CONDITION_COLUMN = "Group"
 DELTA_COLUMN = "Time"           # Column to calculate delta on if REPLACE_VALS_WITH_DELTAS is True
-UNNEEDED_COLUMNS = ["Time"]    # CHECK SELECTED COLUMNS ARE ACTUALLY BEING REMOVED FROM ANALYSIS                                             # use for unneeded columns
+UNNEEDED_COLUMNS = []    # CHECK SELECTED COLUMNS ARE ACTUALLY BEING REMOVED FROM ANALYSIS                                             # use for unneeded columns
 FILTER_COLUMN = None
 FILTER_VALUE = None
 PROTEIN_COLUMNS  = [col for col in ORIGINAL_DATA_DF.columns if (col not in ID_COLUMN and col not in UNNEEDED_COLUMNS and col != CONDITION_COLUMN and col != DELTA_COLUMN and col != FILTER_COLUMN)]  
@@ -136,7 +136,7 @@ RUN_LOGISTIC_REGRESSION = False
 # Other Settings
 ID_DELIMITER = "-"              # NOT IN GUI    # Delimiter to extract subject ID from sample ID for paired or subject-based analysis
 P_THRESHOLD = 0.05
-LOG_FC_THRESHOLD = 0       # 0.58 standard (1.5x), 0.38 relaxed (1.3x), 0.26 very relaxed (1.2x), 0 any change (p-value only)
+LOG_FC_THRESHOLD = 0.58         # 2.00 extreme (4.0x), 1.58 very high (3.0x), 1.32 very high (2.5x), 1.0 high (2x), 0.58 STANDARD (1.5x), 0.38 relaxed (1.3x), 0.26 very relaxed (1.2x), 0 any change (p-value only)
 LIMMA_IS_PAIRED = False         # Set to True for paired limma analysis (requires subject IDs in ID column)
                                 # Recommend and give the option to switch if pairs exist/don't exist in condition column when limma is run
 REPLACE_VALS_WITH_DELTAS = True         # If true makes and additional slector visible to choose which column to calculate delta for, Aand runs tests on delta values - turns limma into an interaction analysis
@@ -315,6 +315,7 @@ def run_gui_selector():
         # Update Standard Globals
         global INPUT_FILE_PATH, SHEET_NAME, OUTPUT_FILE_PATH, CONDITION_COLUMN
         global ID_COLUMN, UNNEEDED_COLUMNS, DELTA_COLUMN
+        global FILTER_COLUMN, FILTER_VALUE 
 
         INPUT_FILE_PATH = v_input_path.get()
         SHEET_NAME = v_sheet.get()
@@ -539,6 +540,9 @@ def impute_missing_vals(df, shift=1.8, width=0.3):
     - shift: How many standard deviations to shift the distribution left (default 1.8)
     - width: The width of the new noise distribution relative to original std (default 0.3)
     """
+    # Set a random seed for reproducibility
+    np.random.seed(938)
+
     # Create a copy to avoid modifying original
     data = df.copy()
     
@@ -746,9 +750,37 @@ if RUN_LIMMA:
 
     # 1. PREPARE DATA
     X_limma = ORIGINAL_DATA_DF[PROTEIN_COLUMNS]
-    print("Imputing missing values...")                         # APPLY CUSTOM MISSING VALUE FILTERING first???
-    if X_limma.isna().sum().sum() > 0:
-        X_limma = impute_missing_vals(X_limma, shift=1.8, width=0.3)
+    
+    # Remove zero-variance features
+    print("Removing zero-variance proteins")
+    X_temp_for_var = X_limma.fillna(0)                                    # Temporarily fill NaNs for variance calculation
+    selector = VarianceThreshold(threshold=0)                             # Increase threshold to 0.1 to remove low variance features
+    try:
+        selector.fit(X_temp_for_var)
+        cols_kept = X_limma.columns[selector.get_support()]
+        X_limma = X_limma[cols_kept]
+        print(f"Proteins after dropping low variance: {X_limma.shape[1]}")
+    except ValueError:
+        print("Warning: Variance filter failed (variance too low globally?), skipping.")
+
+    #Impute missing values
+    if not REPLACE_VALS_WITH_DELTAS:                                    # If running delta analysis missing values already imputed during delta calculation
+        print("Imputing missing values...")
+        if X_limma.isna().sum().sum() > 0:
+            X_limma = impute_missing_vals(X_limma, shift=1.8, width=0.3)
+
+#########################################
+    print("\n--- DATA SCALE DIAGNOSTICS ---")
+    data_max = X_limma.max().max()
+    data_min = X_limma.min().min()
+    print(f"Data Max: {data_max:.2f}, Data Min: {data_min:.2f}")
+    
+    if data_max > 100:
+        print("!!! WARNING: Data magnitude suggests RAW INTENSITY, not Log2.")
+        print("Limma results will be invalid unless you Log2 transform.")
+########################################
+
+
 
     # Need to transpose: Rows = Proteins, Columns = Samples
     r_expression_matrix = X_limma.T
@@ -792,19 +824,40 @@ if RUN_LIMMA:
     unique_groups_clean = sorted(list(set(clean_groups)))
     new_col_names = []
 
-    # Clean the column names
     for c in col_names:
+        found_match = False
         for g in unique_groups_clean:
-            # Check if group name is in the column name (and ignore subject columns)
-            if g in c and "subjects" not in c:
+            # Strictly check if the column is exactly "groups" + the group name
+            # This prevents "Resp" matching inside "groupsNon_Resp"
+            expected_col_name = f"groups{g}"
+            if c == expected_col_name:
                 new_col_names.append(g)
+                found_match = True
                 break
-        else:
+        if not found_match:
             new_col_names.append(c)
             
     # Assign new names back to the R object 'design'
     ro.globalenv['new_cols'] = ro.StrVector(new_col_names)
     ro.r('colnames(design) <- new_cols')
+
+    ###########################################
+    print("\n--- R DESIGN MATRIX DIAGNOSTICS ---")
+    r_cols = list(ro.r('colnames(design)'))
+    compare_string = f"{unique_groups_clean[1]} - {unique_groups_clean[0]}"
+    print(f"Columns in R Design Matrix: {r_cols}")
+    print(f"Calculated Contrast String: {compare_string}")
+    
+    # Check for group sizes in R
+    ro.r('print(table(groups))')
+    
+    # Verify the contrast string elements exist in the columns
+    for group in unique_groups_clean:
+        if group not in r_cols:
+            print(f"!!! CRITICAL: Group '{group}' NOT found in Design Matrix columns!")
+
+
+    ###########################################
     design_matrix = ro.globalenv['design']                      # Pull the design matrix object for use in lmFit
 
 
@@ -869,6 +922,45 @@ if RUN_LIMMA:
             plt.close()
         print(f"Saved Volcano Plot to: {pdf_path}")
 
+
+        ###########################################################
+        # Excel full output
+        # #########################################################
+        excel_path = os.path.join(OUTPUT_FILE_PATH, "Results.xlsx")
+        print(f"\nGeneratng Excel Report: {excel_path}")
+
+        # Define columns
+        keep_cols = ['Protein', 'logFC', 'P.Value', 'adj.P.Val', 'AveExpr']
+        final_cols = [c for c in keep_cols if c in df_results.columns]
+
+        # Define significant proteins subset based on User Parameters - USES RAW P-VALUE
+        sig_mask = (df_results['P.Value'] < P_THRESHOLD) & (df_results['logFC'].abs() > LOG_FC_THRESHOLD)
+        df_sig = df_results.loc[sig_mask, final_cols]
+
+        try:
+            with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+                
+                # Tab 1: All Proteins (Sorted by Raw P-value)
+                df_results[final_cols].sort_values(by='logFC').to_excel(
+                    writer, 
+                    sheet_name='All_Proteins', 
+                    index=False
+                )
+                
+                # Tab 2: Significant Hits Only
+                df_sig.sort_values(by='P.Value').to_excel(
+                    writer, 
+                    sheet_name='Significant_Raw_PVal', 
+                    index=False
+                )
+                
+            print(f"Saved {len(df_results)} total proteins and {len(df_sig)} significant proteins (based on raw p-value)")
+            print("Tab 1: 'All_Proteins'")
+            print(f"Tab 2: 'Significant_Raw_PVal' (Raw P < {P_THRESHOLD} & |LogFC| > {LOG_FC_THRESHOLD})")
+
+        except Exception as e:
+            print(f"Error saving Excel file (check if it's open): {e}")
+
     else:
         print("Error: Need at least 2 groups to perform Limma comparison.")
 
@@ -891,7 +983,7 @@ if RUN_LOGISTIC_REGRESSION:
     X = ORIGINAL_DATA_DF[PROTEIN_COLUMNS]
     y = ORIGINAL_DATA_DF[CONDITION_COLUMN]
 
-    # More aggressive group-based missing protein filtering
+    # More aggressive group-based missing protein filtering     -   REMOVE OR REMPLACE WITH EARLIER IMPUTATION???
     print(f"Original dimensionality: {X.shape[1]} proteins")
     X = groupwise_missing_filter(X, y, threshold=0.7)               # Keep proteins with <30% missing in at least one group
     print(f"Proteins after dropping >30% missing: {X.shape[1]}")
