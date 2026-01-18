@@ -5,6 +5,7 @@ import seaborn as sns
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
+from statsmodels.multivariate.manova import MANOVA
 
 # ==========================================
 # 1. SETUP
@@ -65,11 +66,10 @@ print(f"Explained Variance: PC1={exp_var[0]*100:.2f}%, PC2={exp_var[1]*100:.2f}%
 # 4. VISUALISATION
 # ==========================================
 
-# Increased figure size to accommodate 3 plots side-by-side (18x6 instead of 12x5)
-plt.figure(figsize=(18, 6))
+plt.figure(figsize=(16, 12))
 
 # Plot 1: Coloured by Biological Factor (Condition)
-plt.subplot(1, 3, 1)
+plt.subplot(2, 2, 1)
 sns.scatterplot(
     data=final_df, x='PC1', y='PC2', 
     hue='Condition', style='Timepoint', s=100
@@ -77,24 +77,34 @@ sns.scatterplot(
 plt.title('PCA: Biological (Condition)')
 plt.grid(True, alpha=0.3)
 
-# Plot 2: Coloured by Study (technical 1)
-plt.subplot(1, 3, 2)
+# Plot 2: Coloured by Study (Technical 1)
+plt.subplot(2, 2, 2)
 sns.scatterplot(
     data=final_df, x='PC1', y='PC2', 
     hue='Study', style='Timepoint', 
     palette='Set1', s=100
 )
-plt.title('PCA: Batch Effect (Study)')
+plt.title('PCA: Technical Check (Study)')
 plt.grid(True, alpha=0.3)
 
-# Plot 3: Coloured by Replicate (technical 2 2)
-plt.subplot(1, 3, 3)
+# Plot 3: Coloured by Replicate (Technical 2)
+plt.subplot(2, 2, 3)
 sns.scatterplot(
     data=final_df, x='PC1', y='PC2', 
     hue='Replicate', style='Timepoint', 
     palette='Set2', s=100
 )
-plt.title('PCA: Batch Effect (Replicate)')
+plt.title('PCA: Technical Check (Replicate)')
+plt.grid(True, alpha=0.3)
+
+# Plot 4: Coloured by Timepoint (Biological/Longitudinal)
+plt.subplot(2, 2, 4)
+sns.scatterplot(
+    data=final_df, x='PC1', y='PC2', 
+    hue='Timepoint', style='Condition', 
+    palette='viridis', s=100
+)
+plt.title('PCA: Longitudinal Check (Timepoint)')
 plt.grid(True, alpha=0.3)
 
 plt.tight_layout()
@@ -138,3 +148,62 @@ plt.show()
 # )
 # plt.title("Sample Correlation Matrix")
 # plt.show()
+
+
+
+
+# ==========================================
+# 6. MONVOA TEST
+# ==========================================
+print("\n" + "="*40)
+print("MANOVA RESULTS (PCs ~ Factor)")
+print("Tests for significant separation in PCA")
+print("="*40)
+
+# Testing if the PC1/PC2 combination differs significantly within each comparison
+# P threshold 0.05
+# For condition (rep/nonresp group)/timepoint: low p-value = good (disparity between groups)
+# For replicate/study: high p-value = good (no batch effect)
+
+factors_to_test = ['Condition', 'Study', 'Replicate', 'Timepoint']
+results = []
+
+# Ensure categorical types for the model
+final_df['Replicate'] = final_df['Replicate'].astype(str)
+final_df['Timepoint'] = final_df['Timepoint'].astype(str)
+
+for factor in factors_to_test:
+    # Check if the factor exists and has at least 2 levels (can't test if only 1 group)
+    if factor in final_df.columns and len(final_df[factor].unique()) > 1:
+        
+        # Create the formula
+        formula = f'PC1 + PC2 ~ {factor}'
+        
+        # Run MANOVA
+        maov = MANOVA.from_formula(formula, data=final_df)
+        test_res = maov.mv_test()
+        
+        # Wilks' Lambda p-value
+        p_val = test_res.results[factor]['stat'].loc["Wilks' lambda", 'Pr > F']
+        
+        results.append({
+            'Factor': factor, 
+            'P-Value': p_val, 
+            'Significant?': 'Yes' if p_val < 0.05 else 'No'
+        })
+    else:
+        results.append({
+            'Factor': factor, 
+            'P-Value': 'N/A (Singular/Missing)', 
+            'Significant?': '-'
+        })
+
+# Create a dataFrame for display
+stats_df = pd.DataFrame(results)
+pd.options.display.float_format = '{:.4g}'.format
+
+print(stats_df)
+print("\nInterpretation:")
+print("- Condition/Timepoint: Significant (Yes) = Good (group disparity)")
+print("- Study/Replicate:     Significant (Yes) = Bad (batch effect)")
+print("="*40)
