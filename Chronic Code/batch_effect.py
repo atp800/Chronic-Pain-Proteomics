@@ -62,41 +62,39 @@ exp_var = pca.explained_variance_ratio_
 print(f"Explained Variance: PC1={exp_var[0]*100:.2f}%, PC2={exp_var[1]*100:.2f}%")
 
 # ==========================================
-# 4. VISUALIsATION
+# 4. VISUALISATION
 # ==========================================
 
-plt.figure(figsize=(12, 5))
+# Increased figure size to accommodate 3 plots side-by-side (18x6 instead of 12x5)
+plt.figure(figsize=(18, 6))
 
-# Plot 1: Coloired by Biological Factor (Condition)
-plt.subplot(1, 2, 1)
+# Plot 1: Coloured by Biological Factor (Condition)
+plt.subplot(1, 3, 1)
 sns.scatterplot(
     data=final_df, x='PC1', y='PC2', 
     hue='Condition', style='Timepoint', s=100
 )
-plt.title('PCA: Biological Factors (Condition/Time)')
+plt.title('PCA: Biological (Condition)')
 plt.grid(True, alpha=0.3)
 
-# # Plot 2: Coloured by Replicate: separation = batch effect
-# plt.subplot(1, 2, 2)
-# sns.scatterplot(
-#     data=final_df, x='PC1', y='PC2', 
-#     hue='Replicate', style='Timepoint', 
-#     palette='Set1', s=100
-# )
-# plt.title('PCA: Technical Factors (Replicate Check)')
-# plt.grid(True, alpha=0.3)
-
-# plt.tight_layout()
-# plt.show()
-
-# Plot 2: Coloured by Replicate: separation = batch effect
-plt.subplot(1, 2, 2)
+# Plot 2: Coloured by Study (technical 1)
+plt.subplot(1, 3, 2)
 sns.scatterplot(
     data=final_df, x='PC1', y='PC2', 
     hue='Study', style='Timepoint', 
     palette='Set1', s=100
 )
-plt.title('PCA: Technical Factors (Replicate Check)')
+plt.title('PCA: Batch Effect (Study)')
+plt.grid(True, alpha=0.3)
+
+# Plot 3: Coloured by Replicate (technical 2 2)
+plt.subplot(1, 3, 3)
+sns.scatterplot(
+    data=final_df, x='PC1', y='PC2', 
+    hue='Replicate', style='Timepoint', 
+    palette='Set2', s=100
+)
+plt.title('PCA: Batch Effect (Replicate)')
 plt.grid(True, alpha=0.3)
 
 plt.tight_layout()
@@ -106,21 +104,37 @@ plt.show()
 # 5. CLUSTERMAP (Hierarchical Clustering)
 # ==========================================
 
-# Calculate correlation matrix (transposed so correlate samples, not proteins)
-corr_matrix = df_log[expression_cols].T.corr(method='pearson')
+# # Calculate correlation matrix
+# corr_matrix = df_log[expression_cols].T.corr(method='pearson')
 
-# Map metadata to colours for  sidebar
-condition_colors = df_log['Condition'].map({'Resp': 'blue', 'NonResp': 'red'})
-replicate_colors = df_log['Replicate'].map({1: 'green', 2: 'orange'})
 
-# Plot
-sns.clustermap(
-    corr_matrix, 
-    row_colors=[condition_colors, replicate_colors],
-    col_colors=[condition_colors, replicate_colors],
-    cmap='viridis',
-    figsize=(8, 8),
-    annot=True
-)
-plt.title("Sample Correlation Matrix")
-plt.show()
+# # 1. Condition Colors
+# condition_colors = df_log['Condition'].map({'Resp': 'blue', 'NonResp': 'red'})
+
+# # 2. Replicate Colors (Manual mapping)
+# replicate_colors = df_log['Replicate'].map({1: 'green', 2: 'orange'})
+
+# # 3. Study Colors (Automated mapping using a palette)
+# unique_studies = df_log['Study'].unique()
+# study_palette = sns.color_palette("husl", len(unique_studies))
+# study_lut = dict(zip(unique_studies, study_palette))
+# study_colors = df_log['Study'].map(study_lut)
+
+# # Combine into a dataFrame for the row/col colors
+# row_colors_df = pd.DataFrame({
+#     'Condition': condition_colors,
+#     'Replicate': replicate_colors,
+#     'Study': study_colors
+# })
+
+# # Plot
+# sns.clustermap(
+#     corr_matrix, 
+#     row_colors=row_colors_df,
+#     col_colors=row_colors_df,
+#     cmap='viridis',
+#     figsize=(10, 10),
+#     annot=False # I turned off annotations (numbers) as they are messy on large plots
+# )
+# plt.title("Sample Correlation Matrix")
+# plt.show()

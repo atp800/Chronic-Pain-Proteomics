@@ -181,10 +181,10 @@ def run_gui_selector():
     }
 
     TEST_SETTINGS = {
-        "RUN_PCA":                  "Run PCA",
+        "RUN_PCA":                  "Placeholder",
         "RUN_LIMMA":                "Run Limma",
-        "RUN_SPEARMANS":            "Run Spearmans",
-        "RUN_LASSO":                "Run LASSO",
+        "RUN_SPEARMANS":            "Placeholder",
+        "RUN_LASSO":                "Placeholder",
         "RUN_LOGISTIC_REGRESSION":  "Run Logistic Regression"
     }
 
