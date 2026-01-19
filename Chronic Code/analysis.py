@@ -888,9 +888,9 @@ if RUN_LIMMA:
         df_results.reset_index(inplace=True)
         
         # Save
-        limma_out_path = os.path.join(OUTPUT_FILE_PATH, "Limma_Results.csv")
-        df_results.to_csv(limma_out_path, index=False)
-        print(f"Saved Limma results to: {limma_out_path}")
+        # limma_out_path = os.path.join(OUTPUT_FILE_PATH, "Limma_Results.csv")
+        # df_results.to_csv(limma_out_path, index=False)
+        # print(f"Saved Limma results to: {limma_out_path}")
         
         # Identify Significant Proteins
         sig_proteins = df_results[(df_results['adj.P.Val'] < P_THRESHOLD) & (abs(df_results['logFC']) > LOG_FC_THRESHOLD)]
@@ -930,27 +930,38 @@ if RUN_LIMMA:
         print(f"\nGeneratng Excel Report: {excel_path}")
 
         # Define columns
-        keep_cols = ['Protein', 'logFC', 'P.Value', 'adj.P.Val', 'AveExpr']
+        keep_cols = ['Protein', 'logFC', 'P.Value', 'adj.P.Val', 'AveExpr', 'B', 't']
         final_cols = [c for c in keep_cols if c in df_results.columns]
 
-        # Define significant proteins subset based on User Parameters - USES RAW P-VALUE
+        # Define significant proteins subset based on p-value threshold - USES RAW P-VALUE
         sig_mask = (df_results['P.Value'] < P_THRESHOLD) & (df_results['logFC'].abs() > LOG_FC_THRESHOLD)
         df_sig = df_results.loc[sig_mask, final_cols]
+
+        # Define significant proteins subset based on p-value threshold - ADJUSTED P-VALUE
+        sig_mask_adj = (df_results['adj.P.Val'] < P_THRESHOLD) & (df_results['logFC'].abs() > LOG_FC_THRESHOLD)
+        df_sig_adj = df_results.loc[sig_mask_adj, final_cols]
 
         try:
             with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
                 
-                # Tab 1: All Proteins (Sorted by Raw P-value)
-                df_results[final_cols].sort_values(by='logFC').to_excel(
+                # Tab 1: All Proteins (Sorted by adjusted P-value)
+                df_results[final_cols].sort_values(by='adj.P.Val').to_excel(
                     writer, 
                     sheet_name='All_Proteins', 
                     index=False
                 )
                 
-                # Tab 2: Significant Hits Only
+                # Tab 2: Significant Hits Only (sorted by raw p-value)
                 df_sig.sort_values(by='P.Value').to_excel(
                     writer, 
                     sheet_name='Significant_Raw_PVal', 
+                    index=False
+                )
+
+                 # Tab 3: Significant Hits Only (Adjusted P)
+                df_sig_adj.sort_values(by='adj.P.Val').to_excel(
+                    writer, 
+                    sheet_name='Significant_Adj_PVal', 
                     index=False
                 )
                 
