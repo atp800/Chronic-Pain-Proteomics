@@ -39,8 +39,35 @@ df_log = df.copy()
 df_log[expression_cols] = np.log2(df[expression_cols] + epsilon)
 
 # Impute missing vals
-imputer = SimpleImputer(strategy='mean') 
-df_log[expression_cols] = imputer.fit_transform(df_log[expression_cols])
+shift = 1.8
+width = 0.3
+np.random.seed(938) # For reproducibility
+
+imputed_data = df_log[expression_cols].copy()       # Create a working copy of just the expression data
+
+for col in imputed_data.columns:
+    # Skip if no missing values
+    if imputed_data[col].isna().sum() == 0:
+        continue
+    
+    valid_data = imputed_data[col].dropna()         # Get statistics of valid values
+    mu = valid_data.mean()
+    sigma = valid_data.std()
+    
+    if pd.isna(sigma) or sigma == 0:                # If std is NaN or zero, fill with zeros
+        imputed_data[col] = imputed_data[col].fillna(0)
+        continue
+        
+    impute_mean = mu - (shift * sigma)              # Calculate mean and std for imputation
+    impute_std = width * sigma
+    
+    n_missing = imputed_data[col].isna().sum()      # Generate random numbers for the missing entries
+    noise_values = np.random.normal(loc=impute_mean, scale=impute_std, size=n_missing)
+
+    mask = imputed_data[col].isna()                 # Fill NaN spots
+    imputed_data.loc[mask, col] = noise_values
+
+    df_log[expression_cols] = imputed_data
 
 # Standardisation (Z-score)
 scaler = StandardScaler()

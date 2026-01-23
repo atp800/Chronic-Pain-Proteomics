@@ -36,7 +36,7 @@ ba_abs_bias_max  <- 0.60   # |mean(Rep1-Rep2)| in log2 (~1.52x)
 alpha_mcnemar    <- 0.001  # missingness asymmetry
 
 # Output folders & naming
-base_dir   <- "Chronic Code/Clean Output"
+base_dir   <- "Chronic Code/Clean Output/x"
 date_str   <- format(Sys.Date(), "%Y-%m-%d")
 root_dir   <- file.path(base_dir, date_str, sheet_name)
 if (!dir.exists(root_dir)) dir.create(root_dir, recursive = TRUE, showWarnings = FALSE)

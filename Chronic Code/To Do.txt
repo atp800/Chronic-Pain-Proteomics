@@ -1,15 +1,14 @@
-1. Get numbers for batch effect
-
-2. Run analysis for group comparison
-
-3. Rename results files and send to Marie with significant results in notepad
-
-4. Rerun everything again with new data file - IGNORE
-
-5. Getother fractions from Pauline
-
-6. Go over code and mtethdoology - verify I understand everything and its all correct and I can explain it
-
-8. BIG WRITE UP - convert protein names to uniprot
+5. Run on other fractions from Pauline
 
 9. more output graphs??
+
+
+
+DONE:
+1. Get numbers for batch effect
+2. Run analysis for group comparison
+3. Rename results files and send to Marie with significant results in notepad
+4. Rerun everything again with new data file - IGNORE
+6. Go over code and mtethdoology - verify I understand everything and its all correct and I can explain it
+7. Remove unused GUI elemtns
+8. BIG WRITE UP - convert protein names to uniprot
