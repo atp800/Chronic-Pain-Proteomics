@@ -75,6 +75,19 @@ scaler = StandardScaler()
 scaled_data = scaler.fit_transform(df[expression_cols])
 
 
+# ==========================================
+# 2.5 Determine number of principle components
+# ==========================================
+# Run PCA without specifying the number of components to see how much variance each one explains
+pca_full = PCA().fit(scaled_data)
+
+# Calculate the cumulative explained variance
+cumulative_variance = np.cumsum(pca_full.explained_variance_ratio_)
+
+# Find the number of components to explain 95% of the variance
+n_components_95_variance = np.where(cumulative_variance >= 0.95)[0][0] + 1
+print(f"Number of components to explain 95% of variance: {n_components_95_variance}")
+
 
 # ==========================================
 # 3. PCA (Principal Component Analysis)
