@@ -11,11 +11,9 @@ from statsmodels.multivariate.manova import MANOVA
 # 1. SETUP
 # ==========================================
 # File Paths
-INPUT_FILE_PATH  = "Chronic Code/Cleaned_Data - SPE.xlsx"                         # NEED TO ADD BACK IN GROUP AND TIME COLUMNS (could get time from sample ID)
+INPUT_FILE_PATH  = "Chronic Code/Cleaned_Data - Soluble.xlsx"                         # NEED TO ADD BACK IN GROUP AND TIME COLUMNS (could get time from sample ID)
 SHEET_NAME       = "Sheet 1"
 DATA = pd.read_excel(INPUT_FILE_PATH, sheet_name=SHEET_NAME)
-
-VARIANCE_THRESHOLD = 0.95  # Threshold for cumulative explained variance
 
 
 df = pd.DataFrame(DATA)
@@ -77,46 +75,25 @@ scaler = StandardScaler()
 scaled_data = scaler.fit_transform(df[expression_cols])
 
 
-# ==========================================
-# 2.5 Determine number of principle components
-# ==========================================
-# Run PCA without specifying the number of components to see how much variance each one explains
-pca_full = PCA().fit(scaled_data)
-
-# Calculate the cumulative explained variance
-cumulative_variance = np.cumsum(pca_full.explained_variance_ratio_)
-
-# Find the number of components to explain VARIANCE_THRESHOLD (as a percentage) of the variance
-number_of_components = np.where(cumulative_variance >= VARIANCE_THRESHOLD)[0][0] + 1
-number_of_components = 6
-print(f"Number of components to explain {VARIANCE_THRESHOLD*100}% of variance: {number_of_components}")
-
 
 # ==========================================
 # 3. PCA (Principal Component Analysis)
 # ==========================================
 
 # Run PCA
-pca = PCA(n_components=number_of_components)
+pca = PCA(n_components=2)
 principalComponents = pca.fit_transform(scaled_data)
-pc_cols = [f'PC{i+1}' for i in range(number_of_components)]
-pca_df = pd.DataFrame(data=principalComponents, columns=pc_cols)
+pca_df = pd.DataFrame(data=principalComponents, columns=['PC1', 'PC2'])
 
 # Combine PCA results with metadata for plotting
 final_df = pd.concat([pca_df, df[metadata_cols].reset_index(drop=True)], axis=1)
 
-# Loop through each component and caclulate explained variance
+# Calculate explained variance
 exp_var = pca.explained_variance_ratio_
-
-for i, variance in enumerate(exp_var):
-    print(f"  - PC{i+1}: {variance*100:.2f}%")
-
-total_variance_explained = sum(exp_var) * 100
-print(f"\nTotal variance explained by {len(exp_var)} components: {total_variance_explained:.2f}%")
-print("---------------------------------------------\n")
+print(f"Explained Variance: PC1={exp_var[0]*100:.2f}%, PC2={exp_var[1]*100:.2f}%")
 
 # ==========================================
-# 4. VISUALISATION - only first two components
+# 4. VISUALISATION
 # ==========================================
 
 plt.figure(figsize=(16, 12))
@@ -196,12 +173,17 @@ plt.show()
 
 
 # ==========================================
-# 6. MANOVA TEST
+# 6. MONVOA TEST
 # ==========================================
 print("\n" + "="*40)
-print(f"MANOVA RESULTS ({number_of_components} PCs ~ Factor)") # Updated printout
+print("MANOVA RESULTS (PCs ~ Factor)")
 print("Tests for significant separation in PCA")
 print("="*40)
+
+# Testing if the PC1/PC2 combination differs significantly within each comparison
+# P threshold 0.05
+# For group (rep/nonresp group)/time: low p-value = good (disparity between groups)
+# For replicate/study: high p-value = good (no batch effect)
 
 factors_to_test = ['Group', 'Study', 'Time']
 results = []
@@ -209,18 +191,18 @@ results = []
 # Ensure categorical types for the model
 final_df['Time'] = final_df['Time'].astype(str)
 
-# Adjusts based on number of principal components
-pc_formula_part = ' + '.join(pc_cols) #  creates "PC1 + PC2 + PC3 etc."
-
 for factor in factors_to_test:
+    # Check if the factor exists and has at least 2 levels (can't test if only 1 group)
     if factor in final_df.columns and len(final_df[factor].unique()) > 1:
         
-        # The formula now includes all the PCs
-        formula = f'{pc_formula_part} ~ {factor}'
+        # Create the formula
+        formula = f'PC1 + PC2 ~ {factor}'
         
+        # Run MANOVA
         maov = MANOVA.from_formula(formula, data=final_df)
         test_res = maov.mv_test()
         
+        # Wilks' Lambda p-value
         p_val = test_res.results[factor]['stat'].loc["Wilks' lambda", 'Pr > F']
         
         results.append({
@@ -242,5 +224,5 @@ pd.options.display.float_format = '{:.4g}'.format
 print(stats_df)
 print("\nInterpretation:")
 print("- Group/Time: Significant (Yes) = Good (group disparity)")
-print("- Study:      Significant (Yes) = Bad (batch effect)")
+print("- Study:     Significant (Yes) = Bad (batch effect)")
 print("="*40)
