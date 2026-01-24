@@ -11,7 +11,7 @@ from statsmodels.multivariate.manova import MANOVA
 # 1. SETUP
 # ==========================================
 # File Paths
-INPUT_FILE_PATH  = "Chronic Code/Cleaned_Data - Soluble.xlsx"                         # NEED TO ADD BACK IN GROUP AND TIME COLUMNS (could get time from sample ID)
+INPUT_FILE_PATH  = "Chronic Code/Cleaned_Data - Insoluble.xlsx"                         # NEED TO ADD BACK IN GROUP AND TIME COLUMNS (could get time from sample ID)
 SHEET_NAME       = "Sheet 1"
 DATA = pd.read_excel(INPUT_FILE_PATH, sheet_name=SHEET_NAME)
 
@@ -88,7 +88,7 @@ cumulative_variance = np.cumsum(pca_full.explained_variance_ratio_)
 
 # Find the number of components to explain VARIANCE_THRESHOLD (as a percentage) of the variance
 number_of_components = np.where(cumulative_variance >= VARIANCE_THRESHOLD)[0][0] + 1
-number_of_components = 6
+# number_of_components = 6                                                                                   # MANUALLY OVERWRITE TO A FIXED NUMBER OF COMPONENTS
 print(f"Number of components to explain {VARIANCE_THRESHOLD*100}% of variance: {number_of_components}")
 
 

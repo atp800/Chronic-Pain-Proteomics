@@ -108,8 +108,8 @@ from rpy2.robjects.packages import importr
 LAUNCH_GUI = True
 
 # File Paths
-INPUT_FILE_PATH  = "Chronic Code/Cleaned_Data.xlsx"                         # NEED TO ADD BACK IN GROUP AND TIME COLUMNS (could get time from sample ID)
-SHEET_NAME       = "Correlation_Matrix"
+INPUT_FILE_PATH  = "Chronic Code/Cleaned_Data - Insoluble.xlsx"                         # NEED TO ADD BACK IN GROUP AND TIME COLUMNS (could get time from sample ID)
+SHEET_NAME       = "Sheet 1"
 ORIGINAL_DATA_DF = pd.read_excel(INPUT_FILE_PATH, sheet_name=SHEET_NAME)
 OUTPUT_FILE_PATH = "Chronic Code/Analysis_Output"
 
