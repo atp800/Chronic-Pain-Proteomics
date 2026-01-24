@@ -11,7 +11,7 @@ from statsmodels.multivariate.manova import MANOVA
 # 1. SETUP
 # ==========================================
 # File Paths
-INPUT_FILE_PATH  = "Chronic Code/Cleaned_Data - SPE.xlsx"                         # NEED TO ADD BACK IN GROUP AND TIME COLUMNS (could get time from sample ID)
+INPUT_FILE_PATH  = "Chronic Code/Cleaned_Data - Soluble.xlsx"                         # NEED TO ADD BACK IN GROUP AND TIME COLUMNS (could get time from sample ID)
 SHEET_NAME       = "Sheet 1"
 DATA = pd.read_excel(INPUT_FILE_PATH, sheet_name=SHEET_NAME)
 
