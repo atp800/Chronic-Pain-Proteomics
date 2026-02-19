@@ -11,4 +11,84 @@ DONE:
 4. Rerun everything again with new data file - IGNORE
 6. Go over code and mtethdoology - verify I understand everything and its all correct and I can explain it
 7. Remove unused GUI elemtns
-8. BIG WRITE UP - convert protein names to uniprot
+8. BIG WRITE UP - convert protein names to uniport
+
+
+
+1. Rerun and get graphs
+2. create powerpoint running through analyses and results at high level
+
+
+
+Goals, updates
+- main update is now have all th data?? and befor it was being double normalised
+
+Datasets and Precprocssing
+- Pauline/marie: normailisation, log2 transformation, outlier removal, missing value handling
+- imputation of missing values (down-shifted - what is this?)
+
+Steps and what each was for
+- PCA: what it does, along which axis should we be expecting results? where is there variance where we expect it and no variance where we don't want it? Is there a batch 
+- Limma: waht it does (effectively an adjusted anova???), which proteins are significant in this
+- Logisitic regression: what it does (create an equation to predict which group a sample belongs to, where every protein level in a variable in the equation and the coefficeints are learned via existing data), proteins with bigger cofficeints are more significant indicators of a sample bing in a particular group - but requires the equation/model to actually be accurate, which won't happen if thre are no clear indicators in the data
+
+Findings
+- PCA: batch effect, lack of variance
+- Limma: significant
+
+
+Tool
+- Capabilities: choose input file and sheet, imputation, independent or pared limma, logistic regression, choose condition variable, choose columns to exclude, create and compare deltas
+
+- next steps: more interface-based control of logistic regression parameters, more/better graphing optons, preprocessing capabilities
+
+Next steps:
+- combat batch correction
+- look at eigenvalues in PCA analysis to see which proteins contribute to ahc of the main components
+- integrate preprocessing options (normalisation/log2 conversion) into tool
+
+
+
+script to see which time poitnt he identified proteins most commonly peak/trough at
+
+
+Time points: d0 d3 d5 d7 d9 d11 d14 d17 d21 d25 d30
+
+
+Identify key timepoints;
+-Run Limma comparisons on a loop and find the time point where there's the most difference
+-Run MANOVA (accounting for all proteins at once) for each comparison at every time point an find the ones with the most significant difference
+-Analyse identified significant proteins at each timepoint to see where they're most significant (esp. those identified at baseline)
+
+Hypersensitivity phase;
+-Take an average of d9-d14 and compare to d0
+-take peak/trough from d9-d14 and compare to d0
+-Take a count of how many of d9-d14 is higher/lower compared to d0
+
+Injection phase:
+-Take an average of d3-d7 and compare to d0
+-take peak/trough from d3-d7 and compare to d0
+-Take a count of how many of d3-d7 is higher/lower compared to d0
+
+Recovery phase:
+-Take an average of d17-d25 and compare to d0
+-take peak/trough from d17-d25 and compare to d0
+-Take a count of how many of d17-d25 is higher/lower compared to d0
+
+Bell curve model and max/min location:
+-model over d9-d14
+-model over d7-d17
+-model over d5-d21
+
+Create group comparison logistic regression model for each time point
+-see which time point is best for predicting: combine soluble, insoluble and spe?? each feature is treated independently at the start so processing/prevalence variations don't matter
+
+Integrate ComBat batch correction??
+
+
+
+limma is jsut a n anova: one proten at a time
+is there a manova version? analyse all at once to identify key timepoints
+- No
+
+Seeing if a bell curve fits across time: how strong a bell curve fits
