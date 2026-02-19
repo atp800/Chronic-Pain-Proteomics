@@ -7,6 +7,12 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 from statsmodels.multivariate.manova import MANOVA
 
+
+'''
+THIS IS NOW DEPRECATED: ALL FUNCTIONALITY NOW IN PCA.PY
+'''
+
+
 # ==========================================
 # 1. SETUP
 # ==========================================
