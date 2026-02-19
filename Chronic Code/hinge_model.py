@@ -7,8 +7,13 @@ import os
 
 
 '''
-Creates a mixed-effects hinge model for each protein, trying multiple candidate peak days and selecting the best fit based on AIC
-Runs across every 
+Creates a mixed-effects hinge model for each protein, trying multiple candidate peak days and selecting the best fit based on AIC:
+
+- finds an average peak (or trough) amongst participants 
+- creates and upward slope to that that best fits the data from all participants 
+- does the same for the downward slope 
+- looks at how far the participant's actual datapoints are from the created slopes looks at the gradient of the slopes
+- generates a p-value from how significantly the slopes differ from 0 
 
 '''
 
