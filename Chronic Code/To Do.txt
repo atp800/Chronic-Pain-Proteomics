@@ -1,24 +1,3 @@
-5. Run on other fractions from Pauline
-
-9. more output graphs??
-
-
-
-DONE:
-1. Get numbers for batch effect
-2. Run analysis for group comparison
-3. Rename results files and send to Marie with significant results in notepad
-4. Rerun everything again with new data file - IGNORE
-6. Go over code and mtethdoology - verify I understand everything and its all correct and I can explain it
-7. Remove unused GUI elemtns
-8. BIG WRITE UP - convert protein names to uniport
-
-
-
-1. Rerun and get graphs
-2. create powerpoint running through analyses and results at high level
-
-
 
 Goals, updates
 - main update is now have all th data?? and befor it was being double normalised
@@ -84,6 +63,64 @@ Create group comparison logistic regression model for each time point
 -see which time point is best for predicting: combine soluble, insoluble and spe?? each feature is treated independently at the start so processing/prevalence variations don't matter
 
 Integrate ComBat batch correction??
+
+
+
+
+
+NEW:
+- Responders vs non-responders for every timepoint
+- Summation across all time points responders vs non-responders
+- Responders: Baseline vs every timepoint
+- Non-responders: Baseline vs every timepoint
+
+- Logistic regression for time 0 vs vvery other time point among responders
+- Logistic regression for time 0 vs every other time point among everyone
+
+- Hinge model for every protein, recording: peak timepoint, peak height, upward gradient, downward gradient, strength of fit to curve/model
+
+
+Model developments:
+- add p value to logistic regression
+- finish hinge model
+- add a way to loop in gui
+
+
+
+This is my code for analysing cleaned and pre-processed proteomic data
+
+It expects columns containing data to analyse (e.g. protein columns), 
+at least one condition/group column, and a unique ID column.
+
+If subject-wise analysis is needed (e.g. paired limma, comparing data 
+from the same subject at different timepoints), the prefix of the ID column 
+should be a subject identifier, separated by a delimiter (e.g. '-', '_', ' ', '.', '--').
+For example "Subj01-Time0", "Subj01-Time1", for subject 1 at timepoints 0 and 1 respectively. 
+
+At the moment its great for running individual comparisons, e.g. a group comparison of Responders vs Non-Responders at a specific timepoint, where I would use the settings:
+
+•	ID column: Sample_ID
+•	Condition column: Group
+•	Delta column: disable
+•	Filter column: Time
+•	Filter Value: D14
+•	Unneeded columns: Time
+
+•	LIMMA_IS_PAIRED = False
+•	REPLACE_VALS_WITH_DELTAS = False
+
+
+However, I want to be able to run the same comparison for every timepoint,  with separate output files for each timepoint
+
+I think the easiest way to cleanly implement this would be to add a new checkbox called 'Run separately for multiple filter values?'
+Checking this should change the filter value selector into a multi selector, and selecting multiple value for the filter value should cause all the tests to rerun for each filter value.
+
+The only issue this would cause is output files overwriting each other from having the same name
+To solve this, I'd want to change the code to create a new file for each set of outputs, with the name ' Results - {Timestamp}' and include a txt with the complete settings for that run, including the filter value used
+
+
+
+
 
 
 

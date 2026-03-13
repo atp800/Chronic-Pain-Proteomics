@@ -119,7 +119,7 @@ CONDITION_COLUMN = "Group"
 DELTA_COLUMN = "Time"           # Column to calculate delta on if REPLACE_VALS_WITH_DELTAS is True
 UNNEEDED_COLUMNS = []    # CHECK SELECTED COLUMNS ARE ACTUALLY BEING REMOVED FROM ANALYSIS                                             # use for unneeded columns
 FILTER_COLUMN = None
-FILTER_VALUE = None
+FILTER_VALUE = []
 PROTEIN_COLUMNS  = [col for col in ORIGINAL_DATA_DF.columns if (col not in ID_COLUMN and col not in UNNEEDED_COLUMNS and col != CONDITION_COLUMN and col != DELTA_COLUMN and col != FILTER_COLUMN)]  
 
 # Pre-Processing Settings
@@ -142,7 +142,7 @@ LIMMA_IS_PAIRED = False         # Set to True for paired limma analysis (require
 REPLACE_VALS_WITH_DELTAS = True         # If true makes and additional slector visible to choose which column to calculate delta for, Aand runs tests on delta values - turns limma into an interaction analysis
                                 # e.g. get the difference from d0 to d14 for both groups and compare those differences (difference of differences)
                                 # ALSO OVERWRITES LIMMA_IS_PAIRED: sets to false - pairs are now combined into single delta value
-
+MULTI_FILTER_TOGGLE = False     # If true, allows user to select multiple filter values instead of just one - will run analyses on each filter value separately
 
 # add settings for groupwise missing value filtering threshold etc. 
 # - make sure toggles added to gui
@@ -176,8 +176,9 @@ def run_gui_selector():
     DATA_SETTINGS = {
         "ALREADY_LOG2":             "Data Already Log2 Transformed",
         "ALREADY_NORMALISED":       "Data Already Normalised",
-        "REPLACE_VALS_WITH_DELTAS": "Replace Values With Deltas (Interaction Analysis)",
-        "LIMMA_IS_PAIRED":          "Paired Limma (turn off for independent)"
+        "REPLACE_VALS_WITH_DELTAS": "Replace Values With Deltas (interaction analysis)",
+        "LIMMA_IS_PAIRED":          "Paired Limma (turn off for independent)",
+        "MULTI_FILTER_TOGGLE":      "Allow Multiple Filter Values (runs separate analyses for each)"
     }
 
     TEST_SETTINGS = {
@@ -206,7 +207,8 @@ def run_gui_selector():
     v_id_col = tk.StringVar(value=ID_COLUMN)
     v_delta_col = tk.StringVar(value=DELTA_COLUMN)
     v_filter_col = tk.StringVar(value=str(FILTER_COLUMN) if FILTER_COLUMN else "None")
-    v_filter_val = tk.StringVar(value=str(FILTER_VALUE) if FILTER_VALUE else "")
+    # v_filter_val = tk.StringVar(value=str(FILTER_VALUE[0]) if (isinstance(FILTER_VALUE, list) and FILTER_VALUE) else "")
+    # v_multi_filter = tk.BooleanVar(value=MULTI_FILTER_TOGGLE)
     
     # Store all boolean variables here: { 'Global_Name': BooleanVar }
     bool_vars = {}
@@ -226,37 +228,52 @@ def run_gui_selector():
             cb_delta.config(state="disabled")           
     bool_vars["REPLACE_VALS_WITH_DELTAS"].trace_add("write", toggle_delta_selector)      # Attach listener to the delta variable
 
+
+    # --- Logic: Filter Toggle ---
+    def toggle_multi_filter(*args):
+        # Change Listbox mode between browse (single) and extended (multiple)
+        if bool_vars["MULTI_FILTER_TOGGLE"].get():
+            lb_filter_val.config(selectmode="extended")
+        else:
+            lb_filter_val.config(selectmode="browse")
+            # If multiple were selected, keep only the first one
+            selected = lb_filter_val.curselection()
+            if len(selected) > 1:
+                first = selected[0]
+                lb_filter_val.selection_clear(0, tk.END)
+                lb_filter_val.selection_set(first)
+    bool_vars["MULTI_FILTER_TOGGLE"].trace_add("write", toggle_multi_filter)
+
     # --- Logic: Filter Value Updater ---
     def update_filter_values(event=None):
-        """Reads the file to get unique values for the selected filter column"""
         col = v_filter_col.get()
         path = v_input_path.get()
         sheet = v_sheet.get()
 
+        lb_filter_val.delete(0, tk.END)
+
         if col == "None" or not col or not os.path.exists(path):
-            cb_filter_val.set("")
-            cb_filter_val['values'] = []
-            cb_filter_val.config(state="disabled")
+            lb_filter_val.config(state="disabled")
             return
 
-        cb_filter_val.config(state="readonly")
+        lb_filter_val.config(state="normal")
         
         try:
-            # Read only the selected column to save memory
             df = pd.read_excel(path, sheet_name=sheet, usecols=[col])
             unique_vals = df[col].dropna().unique()
-            # Convert to strings for the dropdown
             unique_vals_str = sorted([str(x) for x in unique_vals])
             
-            cb_filter_val['values'] = unique_vals_str
-            
-            # Reset value if current selection isn't in the new list
-            if v_filter_val.get() not in unique_vals_str and len(unique_vals_str) > 0:
-                v_filter_val.set(unique_vals_str[0])
+            for val in unique_vals_str:
+                lb_filter_val.insert(tk.END, val)
+                
+            # Try to auto-select previously set values
+            for i, val in enumerate(unique_vals_str):
+                if val in FILTER_VALUE:
+                    lb_filter_val.selection_set(i)
                 
         except Exception as e:
             print(f"Error loading unique values for filter: {e}")
-            cb_filter_val['values'] = []
+
 
 
     # --- Helper: Update Column Lists based on Sheet ---
@@ -328,10 +345,11 @@ def run_gui_selector():
         f_col = v_filter_col.get()
         if f_col == "None" or f_col == "":
             FILTER_COLUMN = None
-            FILTER_VALUE = None
+            FILTER_VALUE = []
         else:
             FILTER_COLUMN = f_col
-            FILTER_VALUE = v_filter_val.get()
+            selected_indices = lb_filter_val.curselection()
+            FILTER_VALUE = [lb_filter_val.get(i) for i in selected_indices]
         
         all_options = lb_unneeded.get(0, tk.END)
         UNNEEDED_COLUMNS = [all_options[i] for i in lb_unneeded.curselection()]
@@ -386,11 +404,17 @@ def run_gui_selector():
     ttk.Label(lf_cols, text="Filter Data By Column:").grid(row=6, column=0, sticky="w")
     cb_filter_col = ttk.Combobox(lf_cols, textvariable=v_filter_col, width=30)
     cb_filter_col.grid(row=7, column=0, sticky="w", padx=pad, pady=(0, 5))
-    cb_filter_col.bind("<<ComboboxSelected>>", update_filter_values) # Bind event
+    cb_filter_col.bind("<<ComboboxSelected>>", update_filter_values) 
 
-    ttk.Label(lf_cols, text="Keep Filter Value:").grid(row=8, column=0, sticky="w")
-    cb_filter_val = ttk.Combobox(lf_cols, textvariable=v_filter_val, width=30, state="disabled")
-    cb_filter_val.grid(row=9, column=0, sticky="w", padx=pad, pady=(0, 5))
+    # Swap combobox yto listbox for multi-value filter
+    ttk.Label(lf_cols, text="Keep Filter Value(s):").grid(row=8, column=0, sticky="w")
+    frame_lb_fv = ttk.Frame(lf_cols)
+    frame_lb_fv.grid(row=9, column=0, sticky="w", padx=pad, pady=(0, 5))
+    sb_fv = ttk.Scrollbar(frame_lb_fv)
+    sb_fv.pack(side="right", fill="y")
+    lb_filter_val = tk.Listbox(frame_lb_fv, selectmode="browse", height=5, width=30, exportselection=False, yscrollcommand=sb_fv.set)
+    lb_filter_val.pack(side="left", fill="both", expand=True)
+    sb_fv.config(command=lb_filter_val.yview)
 
     # RIGHT SIDE    
     ttk.Label(lf_cols, text="Unneeded/Metadata Columns to Exclude From Analysis: \n(ID, group, delta and filter columns will be excluded too)").grid(row=0, column=1, sticky="w")
@@ -445,8 +469,10 @@ def run_gui_selector():
     if os.path.exists(INPUT_FILE_PATH):
         update_sheet_list()
     toggle_delta_selector() 
+    toggle_multi_filter()
     
     root.mainloop()
+
 
 # Launch GUI if requested
 if LAUNCH_GUI:
@@ -457,6 +483,13 @@ else:
 
 # Ensure Unneeded is a list if it wasn't set
 if UNNEEDED_COLUMNS is None: UNNEEDED_COLUMNS = []
+
+
+# Verify list of filter values to iterate over
+if FILTER_COLUMN and len(FILTER_VALUE) > 0:
+    filter_values_to_run = FILTER_VALUE
+else:
+    filter_values_to_run = [None]           # If there's no filter selected run once with filter val as None
 
 
 
