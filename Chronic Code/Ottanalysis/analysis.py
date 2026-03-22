@@ -888,9 +888,9 @@ if RUN_LIMMA:
     for group in unique_groups_clean:
         if group not in r_cols:
             print(f"!!! CRITICAL: Group '{group}' NOT found in Design Matrix columns!")
+
+
     ###########################################
-
-
     design_matrix = ro.globalenv['design']                      # Pull the design matrix object for use in lmFit
 
 
@@ -928,8 +928,6 @@ if RUN_LIMMA:
         # Identify Significant Proteins
         sig_proteins = df_results[(df_results['adj.P.Val'] < P_THRESHOLD) & (abs(df_results['logFC']) > LOG_FC_THRESHOLD)]
         print(f"Significant Proteins (adj.P < {P_THRESHOLD} & |logFC| > {LOG_FC_THRESHOLD}): {len(sig_proteins)}")
-
-
 
         # 4. VOLCANO PLOT
         pdf_path = os.path.join(OUTPUT_FILE_PATH, "Limma_Volcano_Plot.pdf")
@@ -1082,7 +1080,7 @@ if RUN_LOGISTIC_REGRESSION:
 
     print("Performing leave-one-out corss-validation...")
     clf.fit(X_scaled, y_encoded)
-    cv_outer = LeaveOneOut()            # Simulates a test set for every single sample
+    cv_outer = LeaveOneOut()            # Simulates a test set for every single sample.
     
     # Lists to store results
     y_pred_unbiased = []
