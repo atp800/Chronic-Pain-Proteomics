@@ -137,9 +137,9 @@ class ProteomicsGUI:
         self.cb_delta_base_time = ttk.Combobox(self.tab_delta, textvariable=self.v_delta_base_time, state="readonly")
         self.cb_delta_base_time.grid(row=0, column=1, sticky="w", padx=5)
 
-        ttk.Label(self.tab_delta, text="Calculate Delta to:").grid(row=1, column=0, sticky="nw", pady=5)
-        self.cb_delta_comp_time = ttk.Combobox(self.tab_delta, textvariable=self.v_delta_comp_time, state="readonly")
-        self.cb_delta_comp_time.grid(row=1, column=1, sticky="w", padx=5)
+        ttk.Label(self.tab_delta, text="Calculate Delta to \n(Ctrl to select multiple):").grid(row=1, column=0, sticky="nw", pady=5)
+        self.lb_delta_comp_time = tk.Listbox(self.tab_delta, selectmode="extended", height=4, exportselection=False)
+        self.lb_delta_comp_time.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
         ttk.Label(self.tab_delta, text="Baseline Group:").grid(row=3, column=0, sticky="w", pady=2)
         self.cb_delta_base_grp = ttk.Combobox(self.tab_delta, textvariable=self.v_delta_base_grp, state="readonly")
@@ -236,11 +236,12 @@ class ProteomicsGUI:
         
         self.cb_long_base.set("")
         self.cb_delta_base_time.set("")
-        self.cb_delta_comp_time.set("")
+
+        self.lb_delta_comp_time.delete(0, tk.END)
         self.lb_grp_times.delete(0, tk.END)
         self.lb_long_comp.delete(0, tk.END)
         
-        # Enable/Disable tabs based on time column presence
+        # Enable/disable tabs based on time column presence
         if not time_col or time_col == "None":
             self.notebook.tab(1, state="disabled")
             self.notebook.tab(2, state="disabled")
@@ -258,10 +259,10 @@ class ProteomicsGUI:
                 
                 self.cb_long_base['values'] = uniques
                 self.cb_delta_base_time['values'] = uniques
-                self.cb_delta_comp_time['values'] = uniques
                 for u in uniques:
                     self.lb_grp_times.insert(tk.END, u)
                     self.lb_long_comp.insert(tk.END, u)
+                    self.lb_delta_comp_time.insert(tk.END, u)
             except Exception:
                 print("Error loading time values")
 
@@ -300,14 +301,13 @@ class ProteomicsGUI:
         elif selected_tab == 2:
             CONFIG["ANALYSIS_MODE"] = "DELTA"
             CONFIG["DELTA_BASELINE"] = self.v_delta_base_time.get()
-            CONFIG["DELTA_COMPARISON"] = self.v_delta_comp_time.get()
             CONFIG["BASELINE_VAL"] = self.v_delta_base_grp.get()
             CONFIG["COMPARE_VALS"] = self.get_listbox_vals(self.lb_delta_comp_grp)
-            CONFIG["LOOP_VALS"] = [None]    #self.get_listbox_vals(self.lb_delta_grps) # Groups to loop through
+            CONFIG["LOOP_VALS"] = self.get_listbox_vals(self.lb_delta_comp_time) # Instead of using single DELTA_COMPARISON value, loop through all selected times and calculate deltas for each
 
             # Validation for delta mode
-            if not CONFIG["DELTA_BASELINE"] or not CONFIG["DELTA_COMPARISON"]:
-                messagebox.showerror("Error", "Please select a Delta Baseline and Comparison time.")
+            if not CONFIG["DELTA_BASELINE"] or not CONFIG["LOOP_VALS"]:
+                messagebox.showerror("Error", "Please select a delta baseline and at least one comparison time.")
                 return
 
 
