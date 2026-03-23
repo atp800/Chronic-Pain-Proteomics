@@ -25,21 +25,43 @@ print("\n" + "="*60)
 print(f"ANALYSIS MODE: {MODE}")
 print("="*60)
 
+
+if MODE == "DELTA":
+    print(f"Delta Calculation: Change from baseline {CONFIG.get('DELTA_BASELINE')} to {CONFIG.get('DELTA_COMPARISON')}")
+
 print(f"Baseline: {CONFIG['BASELINE_VAL']}")
 print(f"Comparisons to make: {CONFIG['COMPARE_VALS']}")
+
 if CONFIG['LOOP_VALS']:
     print(f"Will loop independently for: {CONFIG['LOOP_VALS']}")
 else:
-    print("Will run on entire dataset (No subgroup loops selected).")
+    print("Will run on entire dataset (no separate loops)")
 
 # Load data into dataframe
-print("\nLoading Data...")
+print("\nLoading data...")
 df_main = pd.read_excel(CONFIG["INPUT_FILE_PATH"], sheet_name=CONFIG["SHEET_NAME"])
 
 # Determine protein columns (excludes id/condition/time columns and any other unneeded columns)
 exclude_cols = {CONFIG["ID_COLUMN"], CONFIG["CONDITION_COLUMN"], CONFIG["TIME_COLUMN"]} | set(CONFIG["UNNEEDED_COLUMNS"])
 exclude_cols = {c for c in exclude_cols if c is not None} # removes any none values
 protein_cols =[c for c in df_main.columns if c not in exclude_cols]
+
+
+# Calculate deltas if in delta mode
+if MODE == "DELTA":
+    print(f"\nTransforming data into deltas ({CONFIG['DELTA_COMPARISON']} - {CONFIG['DELTA_BASELINE']})")
+    df_main = calculate_deltas(
+        df=df_main, 
+        id_col=CONFIG["ID_COLUMN"], 
+        time_col=CONFIG["TIME_COLUMN"], 
+        condition_col=CONFIG["CONDITION_COLUMN"], 
+        protein_cols=protein_cols, 
+        id_delimiter=CONFIG.get("ID_DELIMITER", "_"), 
+        baseline_time=CONFIG["DELTA_BASELINE"], 
+        compare_time=CONFIG["DELTA_COMPARISON"]
+    )
+
+
 
 # =========================================================
 # 2. ANALYSES CALL FUNCTION
@@ -55,21 +77,6 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, out
     
     # Check output folder exists
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Delta transformation if used
-    if is_delta:
-        df_subset = calculate_deltas(
-            df=df_subset, 
-            id_col=CONFIG["ID_COLUMN"], 
-            time_col=CONFIG["TIME_COLUMN"], 
-            condition_col=CONFIG["CONDITION_COLUMN"], 
-            protein_cols=protein_cols, 
-            id_delimiter=CONFIG["ID_DELIMITER"], 
-            baseline_time=baseline_name, 
-            compare_time=compare_name
-        )
-        group_col = CONFIG["CONDITION_COLUMN"] # Once delta is calculated, Limma groups by Condition (Responder vs NonResp)
-        is_paired = False # Deltas merge paired rows into single values
 
     # Run tests
     if CONFIG.get("RUN_LIMMA", False):

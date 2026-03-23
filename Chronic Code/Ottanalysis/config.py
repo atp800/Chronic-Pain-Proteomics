@@ -28,6 +28,8 @@ CONFIG = {
     "BASELINE_VAL": None,
     "COMPARE_VALS": [],
     "LOOP_VALS": [],
+    "DELTA_BASELINE": None,
+    "DELTA_COMPARISON": None,
     # "REPLACE_VALS_WITH_DELTAS": True,
     # "LIMMA_IS_PAIRED": False,
     # "MULTI_FILTER_TOGGLE": False,
