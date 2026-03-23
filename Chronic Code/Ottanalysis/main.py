@@ -91,11 +91,11 @@ for current_loop_val in outer_loops:
     
     # --- SUBSET DATA BY OUTER LOOP (e.g. Filter to just "D0" or just "Responders") ---
     df_filtered = df_main.copy()
-    output_subfolder = CONFIG["OUTPUT_FOLDER"]
+    mode_folder = os.path.join(CONFIG["OUTPUT_FOLDER"], MODE)       # set folder for results based on analysis mode
     
     if current_loop_val is not None:
         print(f"\n--- Starting Analysis block for: {current_loop_val} ---")
-        output_subfolder = os.path.join(CONFIG["OUTPUT_FOLDER"], str(current_loop_val))
+        output_subfolder = os.path.join(mode_folder, str(current_loop_val))
         
         # Determine what column we are filtering on based on the Mode
         if MODE == "GROUP_COMPARISON":
@@ -103,10 +103,14 @@ for current_loop_val in outer_loops:
         elif MODE in ["LONGITUDINAL", "DELTA"]:
             df_filtered = df_filtered[df_filtered[CONFIG["CONDITION_COLUMN"]].astype(str) == str(current_loop_val)]
 
+    else:
+        # if current_loop_val is None (no timepoints/groups specified to iterate through),put results in "ALL" folder
+        output_subfolder = os.path.join(mode_folder, "ALL")
 
     # --- INNER LOOP: Iterate through the targeted comparisons ---
     for target_val in comp_vals:
-        
+        comparison_folder = os.path.join(output_subfolder, f"{target_val}_vs_{base_val}")    # set subfolder for results based on comparison
+
         # Setup the 2-condition dataframe
         if MODE == "GROUP_COMPARISON":
             # Keep only Baseline Group and Target Group
@@ -118,7 +122,7 @@ for current_loop_val in outer_loops:
                 group_col=CONFIG["CONDITION_COLUMN"], 
                 baseline_name=base_val, 
                 compare_name=target_val, 
-                output_dir=output_subfolder,
+                output_dir=comparison_folder,
                 is_paired=False, 
                 is_delta=False
             )
@@ -133,7 +137,7 @@ for current_loop_val in outer_loops:
                 group_col=CONFIG["TIME_COLUMN"], 
                 baseline_name=base_val, 
                 compare_name=target_val, 
-                output_dir=output_subfolder,
+                output_dir=comparison_folder,
                 is_paired=True,     # Longitudinal assumes paired tracking!
                 is_delta=False
             )
@@ -145,10 +149,10 @@ for current_loop_val in outer_loops:
             
             run_statistical_tests(
                 df_subset=df_2_times, 
-                group_col=CONFIG["CONDITION_COLUMN"], # Stats group by Condition (Responder)
+                group_col=CONFIG["CONDITION_COLUMN"], 
                 baseline_name=base_val, 
                 compare_name=target_val, 
-                output_dir=output_subfolder,
+                output_dir=comparison_folder,
                 is_paired=False,    # Deltas collapse pairs into independent change values
                 is_delta=True
             )
