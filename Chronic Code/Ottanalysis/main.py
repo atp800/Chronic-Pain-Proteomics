@@ -100,7 +100,7 @@ for current_loop_val in outer_loops:
         elif MODE == "DELTA":
             # Calculate deltas if in delta mode
             print(f"\nTransforming data into deltas ({CONFIG['DELTA_BASELINE']} to {current_loop_val})")
-            df_main = calculate_deltas(
+            df_filtered = calculate_deltas(
                 df=df_filtered, 
                 id_col=CONFIG["ID_COLUMN"], 
                 time_col=CONFIG["TIME_COLUMN"], 
@@ -110,7 +110,7 @@ for current_loop_val in outer_loops:
                 baseline_time=CONFIG["DELTA_BASELINE"], 
                 compare_time=current_loop_val
             )
-            delta_folder_name = f"{CONFIG['DELTA_BASELINE']}_TO_{CONFIG['DELTA_COMPARISON']}"
+            delta_folder_name = f"{CONFIG['DELTA_BASELINE']}_TO_{current_loop_val}"
             output_subfolder = os.path.join(mode_folder, delta_folder_name)
     
     else:
