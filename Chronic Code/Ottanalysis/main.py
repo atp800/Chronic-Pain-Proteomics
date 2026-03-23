@@ -27,8 +27,8 @@ print("="*60)
 
 print(f"Baseline: {CONFIG['BASELINE_VAL']}")
 print(f"Comparisons to make: {CONFIG['COMPARE_VALS']}")
-if CONFIG['LOOP_FILTER_VALS']:
-    print(f"Will loop independently for: {CONFIG['LOOP_FILTER_VALS']}")
+if CONFIG['LOOP_VALS']:
+    print(f"Will loop independently for: {CONFIG['LOOP_VALS']}")
 else:
     print("Will run on entire dataset (No subgroup loops selected).")
 
@@ -83,25 +83,25 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, out
 # =========================================================
 
 # If user left the "Loop" listbox empty, add a dummy value to let the loop run once
-outer_loops = CONFIG["LOOP_FILTER_VALS"] if CONFIG["LOOP_FILTER_VALS"] else [None]
+outer_loops = CONFIG["LOOP_VALS"] if CONFIG["LOOP_VALS"] else [None]
 base_val = CONFIG["BASELINE_VAL"]
 comp_vals = CONFIG["COMPARE_VALS"]
 
-for current_filter in outer_loops:
+for current_loop_val in outer_loops:
     
     # --- SUBSET DATA BY OUTER LOOP (e.g. Filter to just "D0" or just "Responders") ---
     df_filtered = df_main.copy()
     output_subfolder = CONFIG["OUTPUT_FOLDER"]
     
-    if current_filter is not None:
-        print(f"\n--- Starting Analysis block for: {current_filter} ---")
-        output_subfolder = os.path.join(CONFIG["OUTPUT_FOLDER"], str(current_filter))
+    if current_loop_val is not None:
+        print(f"\n--- Starting Analysis block for: {current_loop_val} ---")
+        output_subfolder = os.path.join(CONFIG["OUTPUT_FOLDER"], str(current_loop_val))
         
         # Determine what column we are filtering on based on the Mode
         if MODE == "GROUP_COMPARISON":
-            df_filtered = df_filtered[df_filtered[CONFIG["TIME_COLUMN"]].astype(str) == str(current_filter)]
+            df_filtered = df_filtered[df_filtered[CONFIG["TIME_COLUMN"]].astype(str) == str(current_loop_val)]
         elif MODE in ["LONGITUDINAL", "DELTA"]:
-            df_filtered = df_filtered[df_filtered[CONFIG["CONDITION_COLUMN"]].astype(str) == str(current_filter)]
+            df_filtered = df_filtered[df_filtered[CONFIG["CONDITION_COLUMN"]].astype(str) == str(current_loop_val)]
 
 
     # --- INNER LOOP: Iterate through the targeted comparisons ---

@@ -20,7 +20,7 @@ class ProteomicsGUI:
         
         self.v_id_col = tk.StringVar(value=CONFIG.get("ID_COLUMN", ""))
         self.v_group_col = tk.StringVar(value=CONFIG.get("CONDITION_COLUMN", ""))
-        self.v_time_col = tk.StringVar(value=CONFIG.get("DELTA_COLUMN", "None"))
+        self.v_time_col = tk.StringVar(value=CONFIG.get("TIME_COLUMN", "None"))
         
         # Mode specific Variables
         self.v_group_base = tk.StringVar()
@@ -76,7 +76,7 @@ class ProteomicsGUI:
         self.cb_group.grid(row=1, column=1, padx=5, sticky="w")
         self.cb_group.bind("<<ComboboxSelected>>", self.update_group_values)
 
-        ttk.Label(col_frame, text="Delta Column (e.g. time):").grid(row=2, column=0, sticky="w")
+        ttk.Label(col_frame, text="Time Column (used for delta):").grid(row=2, column=0, sticky="w")
         self.cb_time = ttk.Combobox(col_frame, textvariable=self.v_time_col, state="readonly")
         self.cb_time.grid(row=2, column=1, padx=5, sticky="w")
         self.cb_time.bind("<<ComboboxSelected>>", self.update_time_values)
@@ -107,7 +107,7 @@ class ProteomicsGUI:
         self.lb_grp_comp = tk.Listbox(self.tab_group, selectmode="extended", height=4, exportselection=False)
         self.lb_grp_comp.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
-        ttk.Label(self.tab_group, text="Run for Timepoint(s) \n(Leave blank for all):").grid(row=2, column=0, sticky="nw", pady=5)
+        ttk.Label(self.tab_group, text="Run for Timepoint(s) \n(Runs separately for each \nselection, or leave blank\nto run on all combined):").grid(row=2, column=0, sticky="nw", pady=5)
         self.lb_grp_times = tk.Listbox(self.tab_group, selectmode="extended", height=4, exportselection=False)
         self.lb_grp_times.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
 
@@ -123,7 +123,7 @@ class ProteomicsGUI:
         self.lb_long_comp = tk.Listbox(self.tab_long, selectmode="extended", height=4, exportselection=False)
         self.lb_long_comp.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
-        ttk.Label(self.tab_long, text="Run for Group(s) \n(Leave blank for all):").grid(row=2, column=0, sticky="nw", pady=5)
+        ttk.Label(self.tab_long, text="Run for Group(s) \n(Runs separately for each \nselection, or leave blank\nto run on all combined):").grid(row=2, column=0, sticky="nw", pady=5)
         self.lb_long_grps = tk.Listbox(self.tab_long, selectmode="extended", height=4, exportselection=False)
         self.lb_long_grps.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
 
@@ -131,7 +131,7 @@ class ProteomicsGUI:
         self.tab_delta = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(self.tab_delta, text="Delta Comparison")
         
-        ttk.Label(self.tab_delta, text="Baseline:").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Label(self.tab_delta, text="Baseline Time:").grid(row=0, column=0, sticky="w", pady=5)
         self.cb_delta_base = ttk.Combobox(self.tab_delta, textvariable=self.v_delta_base_time, state="readonly")
         self.cb_delta_base.grid(row=0, column=1, sticky="w", padx=5)
 
@@ -139,7 +139,7 @@ class ProteomicsGUI:
         self.lb_delta_comp = tk.Listbox(self.tab_delta, selectmode="extended", height=4, exportselection=False)
         self.lb_delta_comp.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
-        ttk.Label(self.tab_delta, text="Run for Group(s) \n(Leave blank for all):").grid(row=2, column=0, sticky="nw", pady=5)
+        ttk.Label(self.tab_delta, text="Run for Group(s) \n(Runs separately for each \nselection, or leave blank\nto run on all combined):").grid(row=2, column=0, sticky="nw", pady=5)
         self.lb_delta_grps = tk.Listbox(self.tab_delta, selectmode="extended", height=4, exportselection=False)
         self.lb_delta_grps.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
 
@@ -281,19 +281,19 @@ class ProteomicsGUI:
             CONFIG["ANALYSIS_MODE"] = "GROUP_COMPARISON"
             CONFIG["BASELINE_VAL"] = self.v_group_base.get()
             CONFIG["COMPARE_VALS"] = self.get_listbox_vals(self.lb_grp_comp)
-            CONFIG["LOOP_FILTER_VALS"] = self.get_listbox_vals(self.lb_grp_times) # Timepoints to loop through
+            CONFIG["LOOP_VALS"] = self.get_listbox_vals(self.lb_grp_times) # Timepoints to loop through
             
         elif selected_tab == 1:
             CONFIG["ANALYSIS_MODE"] = "LONGITUDINAL"
             CONFIG["BASELINE_VAL"] = self.v_long_base_time.get()
             CONFIG["COMPARE_VALS"] = self.get_listbox_vals(self.lb_long_comp)
-            CONFIG["LOOP_FILTER_VALS"] = self.get_listbox_vals(self.lb_long_grps) # Groups to loop through
+            CONFIG["LOOP_VALS"] = self.get_listbox_vals(self.lb_long_grps) # Groups to loop through
             
         elif selected_tab == 2:
             CONFIG["ANALYSIS_MODE"] = "DELTA"
             CONFIG["BASELINE_VAL"] = self.v_delta_base_time.get()
             CONFIG["COMPARE_VALS"] = self.get_listbox_vals(self.lb_delta_comp)
-            CONFIG["LOOP_FILTER_VALS"] = self.get_listbox_vals(self.lb_delta_grps) # Groups to loop through
+            CONFIG["LOOP_VALS"] = self.get_listbox_vals(self.lb_delta_grps) # Groups to loop through
 
         # Validate minimum inputs
         if not CONFIG["BASELINE_VAL"] or not CONFIG["COMPARE_VALS"]:
