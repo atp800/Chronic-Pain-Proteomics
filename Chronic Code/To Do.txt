@@ -83,40 +83,10 @@ NEW:
 Model developments:
 - add p value to logistic regression
 - finish hinge model
-- add a way to loop in gui
 
 
 
-This is my code for analysing cleaned and pre-processed proteomic data
 
-It expects columns containing data to analyse (e.g. protein columns), 
-at least one condition/group column, and a unique ID column.
-
-If subject-wise analysis is needed (e.g. paired limma, comparing data 
-from the same subject at different timepoints), the prefix of the ID column 
-should be a subject identifier, separated by a delimiter (e.g. '-', '_', ' ', '.', '--').
-For example "Subj01-Time0", "Subj01-Time1", for subject 1 at timepoints 0 and 1 respectively. 
-
-At the moment its great for running individual comparisons, e.g. a group comparison of Responders vs Non-Responders at a specific timepoint, where I would use the settings:
-
-•	ID column: Sample_ID
-•	Condition column: Group
-•	Delta column: disable
-•	Filter column: Time
-•	Filter Value: D14
-•	Unneeded columns: Time
-
-•	LIMMA_IS_PAIRED = False
-•	REPLACE_VALS_WITH_DELTAS = False
-
-
-However, I want to be able to run the same comparison for every timepoint,  with separate output files for each timepoint
-
-I think the easiest way to cleanly implement this would be to add a new checkbox called 'Run separately for multiple filter values?'
-Checking this should change the filter value selector into a multi selector, and selecting multiple value for the filter value should cause all the tests to rerun for each filter value.
-
-The only issue this would cause is output files overwriting each other from having the same name
-To solve this, I'd want to change the code to create a new file for each set of outputs, with the name ' Results - {Timestamp}' and include a txt with the complete settings for that run, including the filter value used
 
 
 
