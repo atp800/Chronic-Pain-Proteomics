@@ -116,7 +116,7 @@ for current_loop_val in outer_loops:
 
     # --- INNER LOOP: Iterate through the targeted comparisons ---
     for target_val in comp_vals:
-        comparison_folder = os.path.join(output_subfolder, f"{target_val}_vs_{base_val}")    # set subfolder for results based on comparison
+        comparison_folder = os.path.join(output_subfolder, f"{base_val}_vs_{target_val}")    # set subfolder for results based on comparison
 
         # Setup the 2-condition dataframe
         if MODE == "GROUP_COMPARISON":
