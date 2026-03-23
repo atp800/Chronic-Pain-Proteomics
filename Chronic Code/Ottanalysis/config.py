@@ -6,9 +6,9 @@ CONFIG = {
     "LAUNCH_GUI": True,
     
     # File Paths
-    "INPUT_FILE_PATH": "Chronic Code/Cleaned_Data - Insoluble.xlsx",
+    "INPUT_FILE_PATH": "C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Cleaned Data - 23-3-26/Insoluble.xlsx",
     "SHEET_NAME": "Sheet 1",
-    "OUTPUT_FOLDER": "Chronic Code/Ottanalysis/Analysis_Output",
+    "OUTPUT_FOLDER": "Chronic Code/Ottanalysis/Analysis_Output/Insoluble",
     
     # Column Names
     "ID_COLUMN": "Sample_ID",

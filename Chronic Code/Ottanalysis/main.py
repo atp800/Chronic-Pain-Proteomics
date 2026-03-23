@@ -102,6 +102,8 @@ for current_loop_val in outer_loops:
     
     if current_loop_val is not None:
         print("\n------------------------------------------------------------------")
+        print("\n------------------------------------------------------------------")
+        print("\n------------------------------------------------------------------")
         print(f"\nStarting analysis for: {current_loop_val}")
         output_subfolder = os.path.join(mode_folder, str(current_loop_val))
         
@@ -111,8 +113,13 @@ for current_loop_val in outer_loops:
         elif MODE == "LONGITUDINAL":
             df_filtered = df_filtered[df_filtered[CONFIG["CONDITION_COLUMN"]].astype(str) == str(current_loop_val)]
     else:
+        if MODE == "DELTA":
+            # Define delta mode a folder name
+            delta_folder_name = f"{CONFIG['DELTA_BASELINE']}_TO_{CONFIG['DELTA_COMPARISON']}"
+            output_subfolder = os.path.join(mode_folder, delta_folder_name)
+        else:
         # if current_loop_val is None (no timepoints/groups specified to iterate through),put results in "ALL" folder
-        output_subfolder = os.path.join(mode_folder, "ALL")
+                output_subfolder = os.path.join(mode_folder, "ALL")
 
     # --- INNER LOOP: Iterate through the targeted comparisons ---
     for target_val in comp_vals:

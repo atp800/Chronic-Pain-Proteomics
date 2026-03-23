@@ -62,9 +62,10 @@ from rpy2.robjects.packages import importr
 
 def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir, is_paired, is_delta, config):
 
+    print("\n\n------------------------------------------------------------------")
     print(f"Running Limma: {baseline_name} vs {compare_name}")
     print("Mode: PAIRED Analysis (grouping by subject ID)" if is_paired else "Mode: INDEPENDENT Analysis")
-    print("------------------------------------------------------------------")
+    
 
     # R-Python DataFrame Conversion    
     pandas2ri.activate()
