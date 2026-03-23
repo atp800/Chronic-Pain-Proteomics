@@ -76,7 +76,7 @@ class ProteomicsGUI:
         self.cb_group.grid(row=1, column=1, padx=5, sticky="w")
         self.cb_group.bind("<<ComboboxSelected>>", self.update_group_values)
 
-        ttk.Label(col_frame, text="Time Column:").grid(row=2, column=0, sticky="w")
+        ttk.Label(col_frame, text="Delta Column (e.g. time):").grid(row=2, column=0, sticky="w")
         self.cb_time = ttk.Combobox(col_frame, textvariable=self.v_time_col, state="readonly")
         self.cb_time.grid(row=2, column=1, padx=5, sticky="w")
         self.cb_time.bind("<<ComboboxSelected>>", self.update_time_values)
@@ -89,7 +89,7 @@ class ProteomicsGUI:
         lf = ttk.LabelFrame(self.root, text="2. Analysis Mode Setup", padding=10)
         lf.pack(fill="both", expand=True, padx=10, pady=5)
         
-        ttk.Label(lf, text="Select the tab for the analysis you want to run. (The visible tab is what will execute)", 
+        ttk.Label(lf, text="Select the tab for the analysis you want to run", 
                   font=("Arial", 9, "italic")).pack(anchor="w", pady=(0, 5))
 
         self.notebook = ttk.Notebook(lf)
@@ -107,7 +107,7 @@ class ProteomicsGUI:
         self.lb_grp_comp = tk.Listbox(self.tab_group, selectmode="extended", height=4, exportselection=False)
         self.lb_grp_comp.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
-        ttk.Label(self.tab_group, text="Run at Timepoint(s) \n(Leave blank for all):").grid(row=2, column=0, sticky="nw", pady=5)
+        ttk.Label(self.tab_group, text="Run for Timepoint(s) \n(Leave blank for all):").grid(row=2, column=0, sticky="nw", pady=5)
         self.lb_grp_times = tk.Listbox(self.tab_group, selectmode="extended", height=4, exportselection=False)
         self.lb_grp_times.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
 
@@ -129,9 +129,9 @@ class ProteomicsGUI:
 
         # --- TAB 3: Delta Comparison ---
         self.tab_delta = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(self.tab_delta, text="Delta (Interaction) Comparison")
+        self.notebook.add(self.tab_delta, text="Delta Comparison")
         
-        ttk.Label(self.tab_delta, text="Baseline Time:").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Label(self.tab_delta, text="Baseline:").grid(row=0, column=0, sticky="w", pady=5)
         self.cb_delta_base = ttk.Combobox(self.tab_delta, textvariable=self.v_delta_base_time, state="readonly")
         self.cb_delta_base.grid(row=0, column=1, sticky="w", padx=5)
 
