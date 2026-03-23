@@ -105,7 +105,7 @@ class ProteomicsGUI:
         self.cb_grp_base = ttk.Combobox(self.tab_group, textvariable=self.v_group_base, state="readonly")
         self.cb_grp_base.grid(row=0, column=1, sticky="w", padx=5)
 
-        ttk.Label(self.tab_group, text="Compare Against \n(Select multiple):").grid(row=1, column=0, sticky="nw", pady=5)
+        ttk.Label(self.tab_group, text="Compare Against \n(Ctrl to select multiple):").grid(row=1, column=0, sticky="nw", pady=5)
         self.lb_grp_comp = tk.Listbox(self.tab_group, selectmode="extended", height=4, exportselection=False)
         self.lb_grp_comp.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
@@ -121,7 +121,7 @@ class ProteomicsGUI:
         self.cb_long_base = ttk.Combobox(self.tab_long, textvariable=self.v_long_base_time, state="readonly")
         self.cb_long_base.grid(row=0, column=1, sticky="w", padx=5)
 
-        ttk.Label(self.tab_long, text="Compare Against \n(Select multiple):").grid(row=1, column=0, sticky="nw", pady=5)
+        ttk.Label(self.tab_long, text="Compare Against \n(Ctrl to select multiple):").grid(row=1, column=0, sticky="nw", pady=5)
         self.lb_long_comp = tk.Listbox(self.tab_long, selectmode="extended", height=4, exportselection=False)
         self.lb_long_comp.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
@@ -145,7 +145,7 @@ class ProteomicsGUI:
         self.cb_delta_base_grp = ttk.Combobox(self.tab_delta, textvariable=self.v_delta_base_grp, state="readonly")
         self.cb_delta_base_grp.grid(row=3, column=1, sticky="w", padx=5)
 
-        ttk.Label(self.tab_delta, text="Compare Against \n(Select multiple):").grid(row=4, column=0, sticky="nw", pady=2)
+        ttk.Label(self.tab_delta, text="Compare Against \n(Ctrl to select multiple):").grid(row=4, column=0, sticky="nw", pady=2)
         self.lb_delta_comp_grp = tk.Listbox(self.tab_delta, selectmode="extended", height=4, exportselection=False)
         self.lb_delta_comp_grp.grid(row=4, column=1, sticky="ew", padx=5, pady=2)
 

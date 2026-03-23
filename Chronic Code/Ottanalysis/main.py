@@ -71,9 +71,9 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, out
     This function expects a dataframe with EXACTLY 2 conditions or groups
     Insert Limma, Logistic Regression, etc., here.
     """
-    print(f"\nRunning comparison: {baseline_name} vs {compare_name}")
-    print(f"\nRows in subset: {len(df_subset)}")
-    print(f"\nPaired Limma: {is_paired} | Is Delta Mode: {is_delta}")
+    print(f"Running comparison: {baseline_name} vs {compare_name}")
+    print(f"Rows in subset: {len(df_subset)}")
+    print(f"Paired Limma: {is_paired} | Is Delta Mode: {is_delta}")
     
     # Check output folder exists
     os.makedirs(output_dir, exist_ok=True)
@@ -101,7 +101,8 @@ for current_loop_val in outer_loops:
     mode_folder = os.path.join(CONFIG["OUTPUT_FOLDER"], MODE)       # set folder for results based on analysis mode
     
     if current_loop_val is not None:
-        print(f"\n--- Starting Analysis block for: {current_loop_val} ---")
+        print("\n------------------------------------------------------------------")
+        print(f"\nStarting analysis for: {current_loop_val}")
         output_subfolder = os.path.join(mode_folder, str(current_loop_val))
         
         # Determine what column we are filtering on based on the Mode
