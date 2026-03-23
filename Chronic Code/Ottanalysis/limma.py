@@ -199,7 +199,7 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
     
 
     # Output generation
-    file_prefix = f"Limma_{compare_name}_vs_{baseline_name}"
+    file_prefix = f"Limma_{baseline_name}_vs_{compare_name}"
     
     # 1. Volcano Plot
     pdf_path = os.path.join(output_dir, f"{file_prefix}_Volcano.pdf")
