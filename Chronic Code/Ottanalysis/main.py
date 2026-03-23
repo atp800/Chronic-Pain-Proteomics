@@ -32,7 +32,7 @@ if MODE == "DELTA":
 print(f"Baseline: {CONFIG['BASELINE_VAL']}")
 print(f"Comparisons to make: {CONFIG['COMPARE_VALS']}")
 
-if CONFIG['LOOP_VALS']:
+if CONFIG['LOOP_VALS'] and CONFIG['LOOP_VALS'] != [None]:
     print(f"Will loop independently for: {CONFIG['LOOP_VALS']}")
 else:
     print("Will run on entire dataset (no separate loops)")
@@ -107,9 +107,8 @@ for current_loop_val in outer_loops:
         # Determine what column we are filtering on based on the Mode
         if MODE == "GROUP_COMPARISON":
             df_filtered = df_filtered[df_filtered[CONFIG["TIME_COLUMN"]].astype(str) == str(current_loop_val)]
-        elif MODE in ["LONGITUDINAL", "DELTA"]:
+        elif MODE == "LONGITUDINAL":
             df_filtered = df_filtered[df_filtered[CONFIG["CONDITION_COLUMN"]].astype(str) == str(current_loop_val)]
-
     else:
         # if current_loop_val is None (no timepoints/groups specified to iterate through),put results in "ALL" folder
         output_subfolder = os.path.join(mode_folder, "ALL")
@@ -150,12 +149,12 @@ for current_loop_val in outer_loops:
             )
 
         elif MODE == "DELTA":
-            # Keep only Baseline Time and Target Time
-            col_to_filter = CONFIG["TIME_COLUMN"]
-            df_2_times = df_filtered[df_filtered[col_to_filter].astype(str).isin([str(base_val), str(target_val)])]
+            # same as group coparison, but using globally calculated delta dataframe
+            col_to_filter = CONFIG["CONDITION_COLUMN"]
+            df_2_groups = df_filtered[df_filtered[col_to_filter].astype(str).isin([str(base_val), str(target_val)])]
             
             run_statistical_tests(
-                df_subset=df_2_times, 
+                df_subset=df_2_groups, 
                 group_col=CONFIG["CONDITION_COLUMN"], 
                 baseline_name=base_val, 
                 compare_name=target_val, 

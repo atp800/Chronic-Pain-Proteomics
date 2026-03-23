@@ -301,8 +301,8 @@ class ProteomicsGUI:
             CONFIG["ANALYSIS_MODE"] = "DELTA"
             CONFIG["DELTA_BASELINE"] = self.v_delta_base_time.get()
             CONFIG["DELTA_COMPARISON"] = self.v_delta_comp_time.get()
-            CONFIG["BASELINE_VAL"] = self.v_delta_base_time.get()
-            CONFIG["COMPARE_VALS"] = self.get_listbox_vals(self.lb_delta_comp)
+            CONFIG["BASELINE_VAL"] = self.v_delta_base_grp.get()
+            CONFIG["COMPARE_VALS"] = self.get_listbox_vals(self.lb_delta_comp_grp)
             CONFIG["LOOP_VALS"] = [None]    #self.get_listbox_vals(self.lb_delta_grps) # Groups to loop through
 
             # Validation for delta mode
