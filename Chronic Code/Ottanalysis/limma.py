@@ -228,6 +228,9 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
     sig_mask_adj = (df_results['adj.P.Val'] < config["P_THRESHOLD"]) & (df_results['logFC'].abs() > config["LOG_FC_THRESHOLD"])
     df_sig_adj = df_results.loc[sig_mask_adj, final_cols]
 
+    print(f"Significant proteins (raw p-value < {config['P_THRESHOLD']} & abs(logFC) > {config['LOG_FC_THRESHOLD']}): {df_sig.shape[0]}")
+    print(f"Significant proteins (adjusted p-value < {config['P_THRESHOLD']} & abs(logFC) > {config['LOG_FC_THRESHOLD']}): {df_sig_adj.shape[0]}")
+
     with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
         df_results[final_cols].sort_values(by='adj.P.Val').to_excel(writer, sheet_name='All_Proteins', index=False)
         df_sig.sort_values(by='P.Value').to_excel(writer, sheet_name='Significant_Raw_PVal', index=False)

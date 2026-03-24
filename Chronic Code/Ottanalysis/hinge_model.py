@@ -10,11 +10,23 @@ import os
 Creates a mixed-effects hinge model for each protein, trying multiple candidate peak days and selecting the best fit based on AIC:
 
 - finds an average peak (or trough) amongst participants 
-- creates and upward slope to that that best fits the data from all participants 
-- does the same for the downward slope 
+- creates an initial upward or downward slope to that that best fits the data from all participants 
+- creates an opposite slope on the other side of the peak/troughin the same way 
 - looks at how far the participant's actual datapoints are from the created slopes looks at the gradient of the slopes
 - generates a p-value from how significantly the slopes differ from 0 
 
+
+Output should include (for each protein):
+- average peak/trough
+- gradient of upward slope
+- gradient of downward slope
+- how well the model fits the data
+- p-values for anything it makes sense to have them for
+- visualisation of the best fitting models (separate file)
+
+Gui options to add:
+- hinge model model options (candidate peak days, number of proteins to include in visualisation)
+- hinge model selection (checkbox to tick to run)
 '''
 
 # ---------------------------

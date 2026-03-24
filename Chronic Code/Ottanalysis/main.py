@@ -85,8 +85,8 @@ for current_loop_val in outer_loops:
     df_filtered = df_main.copy()
     mode_folder = os.path.join(CONFIG["OUTPUT_FOLDER"], MODE)       # set folder for results based on analysis mode
     print("\n------------------------------------------------------------------")
-    print("\n------------------------------------------------------------------")
-    print("\n------------------------------------------------------------------")
+    print("------------------------------------------------------------------")
+    print("------------------------------------------------------------------")
     
     if current_loop_val is not None:
         print(f"\nStarting analysis for: {current_loop_val}")
@@ -99,7 +99,7 @@ for current_loop_val in outer_loops:
             df_filtered = df_filtered[df_filtered[CONFIG["CONDITION_COLUMN"]].astype(str) == str(current_loop_val)]
         elif MODE == "DELTA":
             # Calculate deltas if in delta mode
-            print(f"\nTransforming data into deltas ({CONFIG['DELTA_BASELINE']} to {current_loop_val})")
+            print(f"Transforming data into deltas ({CONFIG['DELTA_BASELINE']} to {current_loop_val})")
             df_filtered = calculate_deltas(
                 df=df_filtered, 
                 id_col=CONFIG["ID_COLUMN"], 
@@ -110,7 +110,7 @@ for current_loop_val in outer_loops:
                 baseline_time=CONFIG["DELTA_BASELINE"], 
                 compare_time=current_loop_val
             )
-            delta_folder_name = f"{CONFIG['DELTA_BASELINE']}_TO_{current_loop_val}"
+            delta_folder_name = f"{CONFIG['DELTA_BASELINE']}_to_{current_loop_val}"
             output_subfolder = os.path.join(mode_folder, delta_folder_name)
     
     else:
