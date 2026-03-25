@@ -10,8 +10,8 @@ from config import CONFIG
 class ProteomicsGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Proteomics Analysis Wizard")
-        self.root.geometry("750x850")
+        self.root.title("Ottanalysis")
+        self.root.geometry("750x900")
         
         # ----- Variables -----
         self.v_input = tk.StringVar(value=CONFIG.get("INPUT_FILE_PATH", ""))
@@ -25,17 +25,22 @@ class ProteomicsGUI:
         # Mode specific Variables
         self.v_group_base = tk.StringVar()
         self.v_long_base_time = tk.StringVar()
+
         self.v_delta_base_time = tk.StringVar()
         self.v_delta_comp_time = tk.StringVar()
         self.v_delta_base_grp = tk.StringVar()
+
+        self.v_hinge_num_plots = tk.IntVar(value=CONFIG.get("HINGE_NUM_PLOTS", 20))
         
         # Test Variables
         self.v_run_limma = tk.BooleanVar(value=CONFIG.get("RUN_LIMMA", True))
         self.v_run_logreg = tk.BooleanVar(value=CONFIG.get("RUN_LOGISTIC_REGRESSION", False))
+        self.v_run_hinge = tk.BooleanVar(value=CONFIG.get("RUN_HINGE", False))
 
         # ----- Build UI -----
         self.build_data_section()
         self.build_mode_tabs()
+        self.build_test_options_section()
         self.build_tests_section()
         
         # Load initial columns if file exists
@@ -88,7 +93,7 @@ class ProteomicsGUI:
         self.lb_ignore.grid(row=0, column=3, rowspan=3, sticky="ew")
 
     def build_mode_tabs(self):
-        lf = ttk.LabelFrame(self.root, text="2. Analysis Mode Setup", padding=10)
+        lf = ttk.LabelFrame(self.root, text="2. Limma and Logistic Regression Settings", padding=10)
         lf.pack(fill="both", expand=True, padx=10, pady=5)
         
         ttk.Label(lf, text="Select the tab for the analysis you want to run", 
@@ -149,12 +154,37 @@ class ProteomicsGUI:
         self.lb_delta_comp_grp = tk.Listbox(self.tab_delta, selectmode="extended", height=4, exportselection=False)
         self.lb_delta_comp_grp.grid(row=4, column=1, sticky="ew", padx=5, pady=2)
 
+    def build_test_options_section(self):
+        lf = ttk.LabelFrame(self.root, text="3. Other Test Settings", padding=10)
+        lf.pack(fill="x", padx=10, pady=5)
+
+        # --- Hinge Model Options ---
+        self.lf_hinge_options = ttk.LabelFrame(lf, text="Hinge Model", padding=10)
+        self.lf_hinge_options.pack(fill="x", padx=5, pady=5)
+        self.lf_hinge_options.columnconfigure(1, weight=1)      # make grid columns expand equally
+        self.lf_hinge_options.columnconfigure(3, weight=1)
+
+        ttk.Label(self.lf_hinge_options, text="Candidate Peak Day(s) \n(Ctrl to select multiple):").grid(row=0, column=0, sticky="nw")
+        self.lb_hinge_peaks = tk.Listbox(self.lf_hinge_options, selectmode="extended", height=4, exportselection=False)
+        self.lb_hinge_peaks.grid(row=0, column=1, padx=5, sticky="ew")
+
+        ttk.Label(self.lf_hinge_options, text="Run for Group(s) \n(Runs separately for each \nselection, or leave blank\nto run on all combined):").grid(row=0, column=2, sticky="nw", padx=(20, 0))
+        self.lb_hinge_groups = tk.Listbox(self.lf_hinge_options, selectmode="extended", height=4, exportselection=False)
+        self.lb_hinge_groups.grid(row=0, column=3, padx=5, sticky="ew")
+
+        ttk.Label(self.lf_hinge_options, text="Number of plots to generate:").grid(row=1, column=0, sticky="w", pady=5)
+        # A spinbox - apparently better for numeric input
+        self.sp_hinge_plots = ttk.Spinbox(self.lf_hinge_options, from_=0, to=1000, increment=5, textvariable=self.v_hinge_num_plots, width=10)
+        self.sp_hinge_plots.grid(row=1, column=1, sticky="w", padx=5)
+        
+
     def build_tests_section(self):
-        lf = ttk.LabelFrame(self.root, text="3. Tests to Run", padding=10)
+        lf = ttk.LabelFrame(self.root, text="4. Tests to Run", padding=10)
         lf.pack(fill="x", padx=10, pady=5)
         
         ttk.Checkbutton(lf, text="Limma", variable=self.v_run_limma).pack(side="left", padx=10)
         ttk.Checkbutton(lf, text="Logistic Regression", variable=self.v_run_logreg).pack(side="left", padx=10)
+        ttk.Checkbutton(lf, text="Hinge Model", variable=self.v_run_hinge).pack(side="left", padx=10)
         
         ttk.Button(self.root, text="RUN ANALYSIS", command=self.on_submit).pack(pady=15, ipady=5, fill="x", padx=20)
 
@@ -214,6 +244,7 @@ class ProteomicsGUI:
         self.lb_grp_comp.delete(0, tk.END)
         self.lb_long_grps.delete(0, tk.END)
         self.lb_delta_comp_grp.delete(0, tk.END)
+        self.lb_hinge_groups.delete(0, tk.END)
         
         if grp_col and grp_col != "None" and os.path.exists(path):
             try:
@@ -226,6 +257,7 @@ class ProteomicsGUI:
                     self.lb_grp_comp.insert(tk.END, u)
                     self.lb_long_grps.insert(tk.END, u)
                     self.lb_delta_comp_grp.insert(tk.END, u)
+                    self.lb_hinge_groups.insert(tk.END, u)
             except Exception:
                 print("Error loading group values")
 
@@ -240,6 +272,7 @@ class ProteomicsGUI:
         self.lb_delta_comp_time.delete(0, tk.END)
         self.lb_grp_times.delete(0, tk.END)
         self.lb_long_comp.delete(0, tk.END)
+        self.lb_hinge_peaks.delete(0, tk.END)
         
         # Enable/disable tabs based on time column presence
         if not time_col or time_col == "None":
@@ -263,6 +296,7 @@ class ProteomicsGUI:
                     self.lb_grp_times.insert(tk.END, u)
                     self.lb_long_comp.insert(tk.END, u)
                     self.lb_delta_comp_time.insert(tk.END, u)
+                    self.lb_hinge_peaks.insert(tk.END, u) 
             except Exception:
                 print("Error loading time values")
 
@@ -282,6 +316,15 @@ class ProteomicsGUI:
         
         CONFIG["RUN_LIMMA"] = self.v_run_limma.get()
         CONFIG["RUN_LOGISTIC_REGRESSION"] = self.v_run_logreg.get()
+        CONFIG["RUN_HINGE"] = self.v_run_hinge.get()
+
+        if CONFIG["RUN_HINGE"]:
+            CONFIG["HINGE_PEAK_CANDIDATES"] = self.get_listbox_vals(self.lb_hinge_peaks)
+            CONFIG["HINGE_GROUPS_TO_RUN"] = self.get_listbox_vals(self.lb_hinge_groups)
+            CONFIG["HINGE_NUM_PLOTS"] = self.v_hinge_num_plots.get()
+            if not CONFIG["HINGE_PEAK_CANDIDATES"]:
+                 messagebox.showerror("Error", "Hinge Model requires at least one candidate peak day to be selected.")
+                 return
 
         # 2. Extract Mode-Specific Configuration
         selected_tab = self.notebook.index("current")

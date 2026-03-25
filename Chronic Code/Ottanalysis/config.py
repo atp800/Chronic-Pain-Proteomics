@@ -29,6 +29,8 @@ CONFIG = {
     "COMPARE_VALS": [],
     "LOOP_VALS": [],
     "DELTA_BASELINE": None,
+    "HINGE_PEAK_CANDIDATES": [],
+    "HINGE_NUM_PLOTS": 20,
     # "DELTA_COMPARISON": None,
     # "REPLACE_VALS_WITH_DELTAS": True,
     # "LIMMA_IS_PAIRED": False,
@@ -40,9 +42,9 @@ CONFIG = {
     "LOG_FC_THRESHOLD": 0.58,
     
     # Tests to Run
-    "RUN_PCA": False,
     "RUN_LIMMA": True,
-    "RUN_SPEARMANS": False,
-    "RUN_LASSO": False,
-    "RUN_LOGISTIC_REGRESSION": False
+    "RUN_HINGE": False,
+    "RUN_PCA": False,
+    "RUN_LOGISTIC_REGRESSION": False,
+    "RUN_SPEARMANS": False
 }

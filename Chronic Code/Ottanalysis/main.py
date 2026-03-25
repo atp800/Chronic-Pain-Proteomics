@@ -7,6 +7,7 @@ from gui import run_gui
 from helpers import calculate_deltas
 from limma import run_limma
 from logistic_regression import run_logistic_regression
+# from hinge_model import run_hinge_model
 
 
 # =========================================================
