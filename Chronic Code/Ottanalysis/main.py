@@ -7,7 +7,7 @@ from gui import run_gui
 from helpers import calculate_deltas
 from limma import run_limma
 from logistic_regression import run_logistic_regression
-# from hinge_model import run_hinge_model
+from hinge_model import run_hinge_model
 
 
 # =========================================================
@@ -72,7 +72,7 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, out
         run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir)
 
 # =========================================================
-# Loops for running analyses
+# 3. Loops for running limma/logistic analyses
 # =========================================================
 
 # If user left the loop vals selection empty, add a dummy value to let the loop run once
@@ -120,7 +120,7 @@ for current_loop_val in outer_loops:
         output_subfolder = os.path.join(mode_folder, "ALL")
 
 
-    # --- INNER LOOP: Iterate through the targeted comparisons ---
+    ##### INNER LOOP: Iterate through the targeted comparisons #########
     for target_val in comp_vals:
         comparison_folder = os.path.join(output_subfolder, f"{base_val}_vs_{target_val}")    # set subfolder for results based on comparison
 
@@ -171,3 +171,49 @@ for current_loop_val in outer_loops:
             )
 
 print("\n-----------------------------------")
+
+
+# =========================================================
+# 3. Loops for running limma/logistic analyses
+# =========================================================
+
+if CONFIG.get("RUN_HINGE", False):
+    
+    # Import the hinge model function at the top of your script:
+    # from hinge_model import run_hinge_model
+    
+    print("\n" + "="*60)
+    print("ANALYSIS MODE: HINGE MODEL")
+    print("="*60)
+
+    # If the user left the groups listbox empty, run on the whole dataset as one group
+    hinge_groups = CONFIG["HINGE_GROUPS_TO_RUN"] if CONFIG["HINGE_GROUPS_TO_RUN"] else [None]
+
+    for group in hinge_groups:
+        
+        df_hinge_subset = df_main.copy()
+        output_subfolder = os.path.join(CONFIG["OUTPUT_FOLDER"], "Hinge_Model")
+
+        if group is not None:
+            print(f"\n--- Running hinge model for group: {group} ---")
+            df_hinge_subset = df_main[df_main[CONFIG["CONDITION_COLUMN"]].astype(str) == str(group)]
+            output_subfolder = os.path.join(output_subfolder, str(group))
+        else:
+            print("\n--- Running hinge model on whole dataset (not split by group) ---")
+            output_subfolder = os.path.join(output_subfolder, "ALL")
+
+        os.makedirs(output_subfolder, exist_ok=True)
+
+        
+        run_hinge_model(
+            df=df_hinge_subset,
+            protein_cols=protein_cols,
+            time_col=CONFIG["TIME_COLUMN"],
+            patient_id_col=CONFIG["ID_COLUMN"],
+            candidate_peaks=CONFIG["HINGE_PEAK_CANDIDATES"],
+            num_plots=CONFIG["HINGE_NUM_PLOTS"],
+            output_dir=output_subfolder
+        )
+
+print("\n-----------------------------------")
+print("j'ai fini")

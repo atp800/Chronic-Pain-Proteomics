@@ -30,6 +30,7 @@ CONFIG = {
     "LOOP_VALS": [],
     "DELTA_BASELINE": None,
     "HINGE_PEAK_CANDIDATES": [],
+    "HINGE_GROUPS_TO_RUN": [],
     "HINGE_NUM_PLOTS": 20,
     # "DELTA_COMPARISON": None,
     # "REPLACE_VALS_WITH_DELTAS": True,
