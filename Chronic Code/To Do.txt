@@ -93,12 +93,13 @@ Don't give warnings about limma or logistic settings if boxes to run aren't tick
 
 Hinge model should grey out or give a warning when less than three timepoints exist (check necessary minimum)
 
+
 check hinge model plot is just two straight lines either side of a hinge
 check it's being calculated properly
 
-Hinge model should not assume first column is ID and second is time - take actual columns form data definitions in gui/config
-
 Updgrade hinge model to be able to specify number of turning points and candidates for each (make sure internal code ensures second/third turning points are after previous ones)
+
+Add multithreading
 
 
 

@@ -133,7 +133,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         df_long.rename(columns={protein: 'value'}, inplace=True)                    # rename the protein column to a generic name for modelling
         df_long.dropna(subset=['value', 'time_numeric'], inplace=True)                    # drop columns where time or protein emasurment is missing
         
-        if len(df_long['time_numeric'].nunique()) < 3: # Need at least 3 unique time points
+        if df_long['time_numeric'].nunique() < 3: # Need at least 3 unique time points
             print(f"Skipping {protein} - not enough unique time points to fit a hinge model")
             continue
 
@@ -220,8 +220,8 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     df_results.sort_values(by='Slope_2_Change_PValue', ascending=True, inplace=True)    # Sort by the most significant hinge effect
     output_filepath = os.path.join(output_dir, "hinge_model_results.xlsx")
 
-    df_mixed_only = df_results[df_results['Model_Type_Used'] == 'Mixed-Effects'][['Protein', 'Slope_2_Change_PValue']]  # Get list of proteins with fitted mixed-effects models
-    df_fixed_only = df_results[df_results['Model_Type_Used'] == 'Fixed-Effects'][['Protein', 'Slope_2_Change_PValue']]  # Get list of proteins with fitted fixed-effects models
+    df_mixed_only = df_results[df_results['Model_Type'] == 'Mixed-Effects'][['Protein', 'Slope_2_Change_PValue']]  # Get list of proteins with fitted mixed-effects models
+    df_fixed_only = df_results[df_results['Model_Type'] == 'Fixed-Effects'][['Protein', 'Slope_2_Change_PValue']]  # Get list of proteins with fitted fixed-effects models
 
     with pd.ExcelWriter(output_filepath, engine='xlsxwriter') as writer:
         df_results.to_excel(writer, sheet_name='All_Model_Results', index=False)
