@@ -6,14 +6,14 @@ CONFIG = {
     "LAUNCH_GUI": True,
     
     # File Paths
-    "INPUT_FILE_PATH": "C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Cleaned Data - 23-3-26/Insoluble.xlsx",
+    "INPUT_FILE_PATH": "C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Cleaned Data - 23-3-26/Soluble.xlsx",
     "SHEET_NAME": "Sheet 1",
-    "OUTPUT_FOLDER": "Chronic Code/Ottanalysis/Analysis_Output/Insoluble",
+    "OUTPUT_FOLDER": "Chronic Code/Ottanalysis/Analysis_Output/Soluble",
     
     # Column Names
     "ID_COLUMN": "Sample_ID",
-    "CONDITION_COLUMN": "Group",
-    "TIME_COLUMN": "Time",
+    "CONDITION_COLUMN": "Condition",
+    "TIME_COLUMN": "Time_Point",
     "UNNEEDED_COLUMNS": [],
     # "FILTER_COLUMN": None,
     # "FILTER_VALUE": [],
