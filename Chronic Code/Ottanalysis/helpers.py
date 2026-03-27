@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 import sys
+from word2number import w2n
+import re
+import warnings
 
 
 ##################################################################
@@ -180,3 +183,34 @@ def calculate_deltas(df, id_col, time_col, condition_col, protein_cols, id_delim
     except Exception as e:
         print(f"Error during delta calculation: {e}")
         sys.exit(1)
+
+
+
+
+##################################################################
+# CONVERT TIMEPOINTS TO NUMBERS (FOR HINGE MODEL)
+##################################################################
+def convert_timepoint_to_number(original_timepoint):
+    '''
+    Converts a value in time column to a numerical floating point value
+    E.g. five->5, D14->14, T0->0, day 5->5 etc.
+    '''
+    
+    original_timepoint = original_timepoint.strip()         # Remove leading/trailing whitespace
+    digits = re.search(r'-?\d+\.?\d*', original_timepoint)    # Look for digits
+    numeric_value = None
+
+    if digits:
+        numeric_value = float(digits.group(0))
+    else:
+        try:
+            numeric_value = w2n.word_to_num(original_timepoint)   # Convert number words (e.g. five)
+        except ValueError:
+            numeric_value = None
+
+    if numeric_value is None:
+        warnings.warn(f"Could not convert time label '{original_timepoint}' to a number")
+    else:
+        numeric_value = float(numeric_value)
+
+    return numeric_value

@@ -209,10 +209,11 @@ if CONFIG.get("RUN_HINGE", False):
             df=df_hinge_subset,
             protein_cols=protein_cols,
             time_col=CONFIG["TIME_COLUMN"],
-            patient_id_col=CONFIG["ID_COLUMN"],
+            id_col=CONFIG["ID_COLUMN"],
             candidate_peaks=CONFIG["HINGE_PEAK_CANDIDATES"],
             num_plots=CONFIG["HINGE_NUM_PLOTS"],
-            output_dir=output_subfolder
+            output_dir=output_subfolder,
+            subject_id_delimiter=CONFIG.get("ID_DELIMITER", "-")
         )
 
 print("\n-----------------------------------")

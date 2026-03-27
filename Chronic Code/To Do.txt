@@ -84,18 +84,22 @@ Model developments:
 - add p value to logistic regression
 - finish hinge model
 
+--------------------------------------------------------------
+
+Don't give warnings about limma or logistic settings if boxes to run aren't ticked
+- same with hinge
+- check limma only runs when box is ticked, if not just remove print statements if not running
+
+
+Hinge model should grey out or give a warning when less than three timepoints exist (check necessary minimum)
+
+check hinge model plot is just two straight lines either side of a hinge
+check it's being calculated properly
+
+Hinge model should not assume first column is ID and second is time - take actual columns form data definitions in gui
+
+Updgrade hinge model to be able to specify number of turning points and candidates for each (make sure internal code ensures second/third turning points are after previous ones)
 
 
 
 
-
-
-
-
-
-
-limma is jsut a n anova: one proten at a time
-is there a manova version? analyse all at once to identify key timepoints
-- No
-
-Seeing if a bell curve fits across time: how strong a bell curve fits
