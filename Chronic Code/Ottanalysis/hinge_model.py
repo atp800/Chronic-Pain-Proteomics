@@ -155,7 +155,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
         # Iterate through numeric candidate peaks to find the best fit
         for peak in candidate_peaks_numeric:
-            df_long['slope1'] = df_long['time_numeric']                                 # Initial slope (before the peak)
+            df_long['slope1'] = df_long['time_numeric'] - peak                            # Initial slope (before the peak)    - previously defined as time_numeric, now defined as relative to the peak to make th epredictors less correlated and improve model convergence
             df_long['slope2_change'] = (df_long['time_numeric'] - peak).clip(lower=0)
             
             mdf = None
