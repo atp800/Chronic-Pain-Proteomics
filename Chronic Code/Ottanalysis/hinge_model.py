@@ -118,8 +118,11 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         df_copy.dropna(subset=['time_numeric'], inplace=True)
 
     # Impute missing values in protein columns (imputes within subject)
-    df_copy[protein_cols] = df_copy.groupby('subject_id_col')[protein_cols].transform(
-        lambda x: impute_missing_vals(x.to_frame())[x.name]
+    df_copy[protein_cols] = (
+        df_copy
+        .groupby('subject_id_col')[protein_cols]
+        .apply(impute_missing_vals)
+        .reset_index(level=0, drop=True)
     )
 
     # Convert candidate peaks
@@ -131,7 +134,8 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
     all_results = []
     failed_protein_count = 0        # number of proteins where code fails to fit mixed effects model
-    
+    no_variance_count = 0
+
     # Use tqdm for a progress bar
     for protein in tqdm(protein_cols, desc="Processing proteins"):
         df_long = df_copy[['subject_id_col', time_col, 'time_numeric', protein]].copy()            # reformat dataframe to long format
@@ -140,6 +144,11 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         
         if df_long['time_numeric'].nunique() < 3: # Need at least 3 unique time points
             print(f"Skipping {protein} - not enough unique time points to fit a hinge model")
+            continue
+
+        if df_long['value'].std() == 0:
+            print(f"Skipping {protein} - no variance")
+            no_variance_count += 1
             continue
 
         best_model = {'aic': float('inf')}
@@ -219,6 +228,16 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     else:
         print("\nHinge model analysis finished with successful fits for all proteins")
 
+
+    ############ DIAGNOSTICS #####################
+    print(f"{no_variance_count} proteins were skipped due to no variance in measurements")
+    print(f"Number of unique subjects: {df_copy['subject_id_col'].nunique()}")
+
+    print("NaNs:", df_long.isna().sum())
+    print("Unique time:", df_long['time_numeric'].unique())
+    print("Subjects:", df_long['subject_id_col'].nunique())
+    print("Value std:", df_long['value'].std())
+    ############################################### 
 
     # Create and save the final results dataframe
     df_results = pd.DataFrame(all_results)
