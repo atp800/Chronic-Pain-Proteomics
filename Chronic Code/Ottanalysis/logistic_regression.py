@@ -259,22 +259,31 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
             
             plt.figure(figsize=(10, 8))
             
-            # Use error bars to show 95% confidence intervals
             y_pos = np.arange(len(plot_df))
+            
+            # Center the error bars on the Bootstrapped Mean (using np.abs to guarantee positive values)
             x_err = [
-                plot_df['Coefficient (Original)'] - plot_df['95% CI Lower'],
-                plot_df['95% CI Upper'] - plot_df['Coefficient (Original)']
+                np.abs(plot_df['Bootstrapped Mean'] - plot_df['95% CI Lower']),
+                np.abs(plot_df['95% CI Upper'] - plot_df['Bootstrapped Mean'])
             ]
             
-            plt.barh(y_pos, plot_df['Coefficient (Original)'], color=sns.color_palette('vlag', n_colors=len(plot_df)))
-            plt.errorbar(plot_df['Coefficient (Original)'], y_pos, xerr=x_err, fmt='none', ecolor='black', capsize=4)
+            # Draw the bars representing original coefficient
+            plt.barh(y_pos, plot_df['Coefficient (Original)'], 
+                     color=sns.color_palette('vlag', n_colors=len(plot_df)), 
+                     label='Original Coefficient')
+            
+            # Draw the error bars centered on the Bootstrapped Mean (with a dot for the mean)
+            plt.errorbar(plot_df['Bootstrapped Mean'], y_pos, xerr=x_err, 
+                         fmt='o', color='black', ecolor='black', capsize=4, markersize=5, 
+                         label='Bootstrap Mean & 95% CI')
             
             plt.yticks(y_pos, plot_df['Protein'])
             plt.gca().invert_yaxis()  # sort with highest absolute value at the top
             
-            plt.title(f'Top {top_n} Features with 95% Bootstrap CIs')
+            plt.title(f'Top {top_n} Features (Bars = Original, Points/Lines = Bootstrap 95% CI)')
             plt.xlabel('Coefficient Value (Log Odds)')
             plt.axvline(0, color='k', linewidth=1)
+            plt.legend(loc='lower right')
             plt.grid(axis='x', alpha=0.3)
             plt.tight_layout()
             pdf.savefig()
