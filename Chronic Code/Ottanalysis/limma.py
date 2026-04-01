@@ -158,12 +158,11 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
     unique_groups_clean = sorted(list(set(clean_groups)))
     new_col_names =[]
 
-    # 3. Robust column renaming logic
+    # 3. Column renaming
     for c in col_names:
         found_match = False
         for g in unique_groups_clean:
-            # Strictly check if the column is exactly "groups" + the group name
-            # This prevents substring errors (e.g. "Resp" matching inside "groupsNon_Resp")
+            # Check if the column is exactly "groups" + the group name - prevents substring errors (e.g. "Resp" matching inside "groupsNon_Resp")
             expected_col_name = f"groups{g}"
             if c == expected_col_name:
                 new_col_names.append(g)
