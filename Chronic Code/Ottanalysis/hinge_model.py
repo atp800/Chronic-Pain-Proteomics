@@ -12,6 +12,7 @@ from word2number import w2n
 import re
 from helpers import convert_timepoint_to_number, derive_subject_ids, impute_missing_vals
 import numpy as np
+import traceback
 
 
 '''
@@ -222,22 +223,31 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     # Results print statements
     if not all_results:
         print("Hinge model analysis finished, but no valid models could be fitted")
+        ############ DIAGNOSTICS #####################
+        print(f"{no_variance_count} proteins were skipped due to no variance in measurements")
+        print(f"Number of unique subjects: {df_copy['subject_id_col'].nunique()}")
+
+        print("NaNs:", df_long.isna().sum())
+        print("Unique times:", df_long['time_numeric'].unique())
+        print("Subjects:", df_long['subject_id_col'].nunique())
+        print("Value std:", df_long['value'].std())
+        ############################################### 
         return
     if failed_protein_count > 0:
         print(f"\nNote: {failed_protein_count} proteins were skipped as no model (mixed or fixed) could be fitted.")
+        ############ DIAGNOSTICS #####################
+        print(f"{no_variance_count} proteins were skipped due to no variance in measurements")
+        print(f"Number of unique subjects: {df_copy['subject_id_col'].nunique()}")
+
+        print("NaNs:", df_long.isna().sum())
+        print("Unique times:", df_long['time_numeric'].unique())
+        print("Subjects:", df_long['subject_id_col'].nunique())
+        print("Value std:", df_long['value'].std())
+        ############################################### 
     else:
         print("\nHinge model analysis finished with successful fits for all proteins")
 
 
-    ############ DIAGNOSTICS #####################
-    print(f"{no_variance_count} proteins were skipped due to no variance in measurements")
-    print(f"Number of unique subjects: {df_copy['subject_id_col'].nunique()}")
-
-    print("NaNs:", df_long.isna().sum())
-    print("Unique time:", df_long['time_numeric'].unique())
-    print("Subjects:", df_long['subject_id_col'].nunique())
-    print("Value std:", df_long['value'].std())
-    ############################################### 
 
     # Create and save the final results dataframe
     df_results = pd.DataFrame(all_results)
