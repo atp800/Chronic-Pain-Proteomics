@@ -5,6 +5,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.backends.backend_pdf import PdfPages
+import warnings
+from sklearn.exceptions import ConvergenceWarning
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.linear_model import LogisticRegressionCV
@@ -17,6 +19,9 @@ from sklearn.model_selection import permutation_test_score
 from sklearn.utils import resample
 
 from helpers import groupwise_missing_filter, impute_missing_vals
+
+# Suppress the max_iter ConvergenceWarnings from scikit-learn
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir):
     print("\n------------------------------------------------------------------")

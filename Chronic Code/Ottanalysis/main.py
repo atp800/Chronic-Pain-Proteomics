@@ -66,9 +66,13 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, out
 
     # Run tests
     if CONFIG.get("RUN_LIMMA", False):
+        limma_dir = os.path.join(output_dir, "Limma")
+        os.makedirs(limma_dir, exist_ok=True)
         run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir, is_paired, is_delta, CONFIG)
         
     if CONFIG.get("RUN_LOGISTIC_REGRESSION", False):
+        logistic_dir = os.path.join(output_dir, "Logistic Regression")
+        os.makedirs(logistic_dir, exist_ok=True)
         run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir)
 
 # =========================================================
