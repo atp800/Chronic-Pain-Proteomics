@@ -85,6 +85,11 @@ Model developments:
 - finish hinge model
 
 --------------------------------------------------------------
+suppress warnings printed when hinge model is running
+replace dropna with impute helper function
+add some diagnostic print statments
+
+
 
 Don't give warnings about limma or logistic settings if boxes to run aren't ticked
 - same with hinge

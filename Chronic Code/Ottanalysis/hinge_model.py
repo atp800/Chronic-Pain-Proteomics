@@ -10,12 +10,12 @@ import seaborn as sns
 from tqdm import tqdm
 from word2number import w2n
 import re
-from helpers import convert_timepoint_to_number, derive_subject_ids
+from helpers import convert_timepoint_to_number, derive_subject_ids, impute_missing_vals
 import numpy as np
 
 
 '''
-Creates a mixed-effects hinge model for each protein, trying multiple candidate peak days and selecting the best fit based on AIC:
+Creates a mixed-effects hinge model for each protein (or fixed-effects as a fallback), trying multiple candidate peak days and selecting the best fit based on AIC:
 
 - finds an average peak (or trough) amongst participants 
 - creates an initial upward or downward slope to that that best fits the data from all participants 
@@ -116,6 +116,11 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     if failed_conversions > 0:
         print(f"Dropped rows where time couldn't be extracted - try reformating to timepoints to integers: {failed_conversions}")
         df_copy.dropna(subset=['time_numeric'], inplace=True)
+
+    # Impute missing values in protein columns (imputes within subject)
+    df_copy[protein_cols] = df_copy.groupby('subject_id_col')[protein_cols].transform(
+        lambda x: impute_missing_vals(x.to_frame())[x.name]
+    )
 
     # Convert candidate peaks
     candidate_peaks_numeric = [convert_timepoint_to_number(str(peak)) for peak in candidate_peaks]
