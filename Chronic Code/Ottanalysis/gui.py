@@ -11,7 +11,7 @@ class ProteomicsGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Ottanalysis")
-        self.root.geometry("750x900")
+        self.root.geometry("850x900")
         
         # ----- Variables -----
         self.v_input = tk.StringVar(value=CONFIG.get("INPUT_FILE_PATH", ""))
@@ -56,8 +56,8 @@ class ProteomicsGUI:
         
         # File Selectors
         ttk.Label(lf, text="Input File:").grid(row=0, column=0, sticky="w")
-        ttk.Entry(lf, textvariable=self.v_input, width=50).grid(row=0, column=1, padx=5)
-        ttk.Button(lf, text="Browse", command=self.browse_in).grid(row=0, column=2)
+        ttk.Entry(lf, textvariable=self.v_input, width=50).grid(row=0, column=1, padx=5, sticky='w')
+        ttk.Button(lf, text="Browse", command=self.browse_in).grid(row=0, column=2, sticky="w")
 
         ttk.Label(lf, text="Sheet:").grid(row=1, column=0, sticky="w", pady=5)
         self.cb_sheet = ttk.Combobox(lf, textvariable=self.v_sheet, width=47, state="readonly")
@@ -65,8 +65,8 @@ class ProteomicsGUI:
         self.cb_sheet.bind("<<ComboboxSelected>>", self.load_columns)
 
         ttk.Label(lf, text="Output Folder:").grid(row=2, column=0, sticky="w")
-        ttk.Entry(lf, textvariable=self.v_output, width=50).grid(row=2, column=1, padx=5)
-        ttk.Button(lf, text="Browse", command=self.browse_out).grid(row=2, column=2)
+        ttk.Entry(lf, textvariable=self.v_output, width=50).grid(row=2, column=1, padx=5, sticky='w')
+        ttk.Button(lf, text="Browse", command=self.browse_out).grid(row=2, column=2, sticky="w")
         
         ttk.Separator(lf, orient='horizontal').grid(row=3, column=0, columnspan=3, sticky="ew", pady=10)
 
@@ -88,11 +88,11 @@ class ProteomicsGUI:
         self.cb_time.grid(row=2, column=1, padx=5, sticky="w")
         self.cb_time.bind("<<ComboboxSelected>>", self.update_time_values)
 
-        ttk.Label(col_frame, text="Covariates (Optional):").grid(row=0, column=2, sticky="nw", padx=(20, 5))
+        ttk.Label(col_frame, text="Covariates:").grid(row=0, column=2, sticky="nw", padx=(20, 5))
         self.lb_covars = tk.Listbox(col_frame, selectmode="extended", height=4, exportselection=False)
         self.lb_covars.grid(row=0, column=3, rowspan=3, sticky="ew")
 
-        ttk.Label(col_frame, text="Columns to Ignore:").grid(row=0, column=2, sticky="nw", padx=(20, 5))
+        ttk.Label(col_frame, text="Columns to Ignore:").grid(row=0, column=4, sticky="nw", padx=(20, 5))
         self.lb_ignore = tk.Listbox(col_frame, selectmode="extended", height=4, exportselection=False)
         self.lb_ignore.grid(row=0, column=5, rowspan=3, sticky="ew")
 
