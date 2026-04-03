@@ -222,6 +222,26 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
     df_results.reset_index(inplace=True)
 
     
+    # 7. Extract any covariate results
+    cov_results_dict = {}
+    
+    # Get any columns in the design matrix that start with "cov_"
+    cov_cols = list(ro.r('grep("^cov_", colnames(design), value=TRUE)'))
+    
+    if cov_cols:
+        # Run eBayes on the base fit (which contains the covariate coefficients)
+        ro.r('fit_cov <- eBayes(fit)')
+        
+        for c_col in cov_cols:
+            # Extract the topTable specifically for this covariate
+            r_cov_res = ro.r(f'topTable(fit_cov, coef="{c_col}", number=Inf, sort.by="P")')
+            with localconverter(ro.default_converter + pandas2ri.converter):
+                df_cov = ro.conversion.rpy2py(r_cov_res)
+            
+            df_cov.index.name = "Protein"
+            df_cov.reset_index(inplace=True)
+            cov_results_dict[c_col] = df_cov
+
 
     # Output generation
     file_prefix = f"Limma_{baseline_name}_vs_{compare_name}"
@@ -260,3 +280,9 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
         df_results[final_cols].sort_values(by='adj.P.Val').to_excel(writer, sheet_name='All_Proteins', index=False)
         df_sig.sort_values(by='P.Value').to_excel(writer, sheet_name='Significant_Raw_PVal', index=False)
         df_sig_adj.sort_values(by='adj.P.Val').to_excel(writer, sheet_name='Significant_Adj_PVal', index=False)
+
+        # Add a new tab for each covariate
+        for cov_name, df_cov in cov_results_dict.items():
+            sheet_name = f"Cov_Effect_{cov_name.replace('cov_', '')}"[:31]  # truncate if over 31 char excel sheet name limit
+            c_cols = [c for c in ['Protein', 'logFC', 'P.Value', 'adj.P.Val', 'AveExpr', 't'] if c in df_cov.columns]
+            df_cov[c_cols].to_excel(writer, sheet_name=sheet_name, index=False)
