@@ -130,24 +130,50 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
     ro.globalenv['subjects'] = r_subjects
     ro.r('groups <- as.factor(groups)')
 
+    # Building formula dynamically
+    formula_terms = ["0", "groups"]
+
     if is_paired:
-        print("Creating Paired Design Matrix (~ 0 + groups + subjects)...")
-        
-        if len(set(derived_subjects)) == len(derived_subjects):                     # Validation: Check if pairing is actually possible
+        if len(set(derived_subjects)) == len(derived_subjects):                     
              print("CRITICAL WARNING: Derived Subject IDs are all unique.")
              print("Limma cannot pair samples if every ID is different.")
-             ro.r('design <- model.matrix(~ 0 + groups)')
         else:
-            ro.r('subjects <- as.factor(subjects)')                                 # force R to treat subjects as a factor
-            ro.r('design <- model.matrix(~ 0 + groups + subjects)')
-    else:
-        print("Creating Independent Design Matrix...")
-        ro.r('design <- model.matrix(~ 0 + groups)')
+            ro.r('subjects <- as.factor(subjects)')                                 
+            formula_terms.append("subjects")
+            if config.get("COVARIATE_COLUMNS"):
+                print("\nNOTE: Using covariates in a PAIRED design.")
+                print("Subject-level covariates (e.g., Sex) may be automatically dropped by Limma due to collinearity with Subject IDs. This is normal.\n")
+
+    # Add covariates
+    covariates = config.get("COVARIATE_COLUMNS", [])
+    for cov in covariates:
+        # Clean variable name for R
+        clean_cov_name = "cov_" + str(cov).replace(" ", "_").replace("-", "_").replace("(", "").replace(")", "")
+        
+        # Check if the covariate is numeric (e.g. age) or categorical (e.g. sex)
+        if pd.api.types.is_numeric_dtype(df_subset[cov]):
+            # Fill missing numeric values with mean (Limma fails if design matrix has NAs)
+            vals = df_subset[cov].fillna(df_subset[cov].mean()).values
+            ro.globalenv[clean_cov_name] = ro.FloatVector(vals)
+            print(f"Added numeric covariate: {cov}")
+        else:
+            # Fill missing categorical values with "Unknown" and convert to R Factor
+            vals = df_subset[cov].fillna("Unknown").astype(str).values
+            ro.globalenv[clean_cov_name] = ro.StrVector(vals)
+            ro.r(f'{clean_cov_name} <- as.factor({clean_cov_name})')
+            print(f"Added categorical covariate: {cov}")
+            
+        formula_terms.append(clean_cov_name)
+
+    # Create final design matrix
+    formula_str = " + ".join(formula_terms)
+    print(f"Creating Design Matrix (~ {formula_str})...")
+    ro.r(f'design <- model.matrix(~ {formula_str})')
         
 
 
 
-# 1. Clean the baseline and compare strings for the contrast equation
+    # 1. Clean the baseline and compare strings for the contrast equation
     clean_base = str(baseline_name).replace(" ", "_").replace("-", "_")
     clean_compare = str(compare_name).replace(" ", "_").replace("-", "_")
     

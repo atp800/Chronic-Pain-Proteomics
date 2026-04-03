@@ -44,7 +44,7 @@ df_main = pd.read_excel(CONFIG["INPUT_FILE_PATH"], sheet_name=CONFIG["SHEET_NAME
 
 
 # Determine protein columns (excludes id/condition/time columns and any other unneeded columns)
-exclude_cols = {CONFIG["ID_COLUMN"], CONFIG["CONDITION_COLUMN"], CONFIG["TIME_COLUMN"]} | set(CONFIG["UNNEEDED_COLUMNS"])
+exclude_cols = {CONFIG["ID_COLUMN"], CONFIG["CONDITION_COLUMN"], CONFIG["TIME_COLUMN"]} | set(CONFIG["UNNEEDED_COLUMNS"]) | set(CONFIG["COVARIATE_COLUMNS"])
 exclude_cols = {c for c in exclude_cols if c is not None} # removes any none values
 protein_cols =[c for c in df_main.columns if c not in exclude_cols]
 

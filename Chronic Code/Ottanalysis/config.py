@@ -15,6 +15,7 @@ CONFIG = {
     "CONDITION_COLUMN": "Condition",
     "TIME_COLUMN": "Time_Point",
     "UNNEEDED_COLUMNS": [],
+    "COVARIATE_COLUMNS": [],
     # "FILTER_COLUMN": None,
     # "FILTER_VALUE": [],
     "PROTEIN_COLUMNS": [],

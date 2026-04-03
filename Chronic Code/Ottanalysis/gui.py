@@ -88,9 +88,14 @@ class ProteomicsGUI:
         self.cb_time.grid(row=2, column=1, padx=5, sticky="w")
         self.cb_time.bind("<<ComboboxSelected>>", self.update_time_values)
 
+        ttk.Label(col_frame, text="Covariates (Optional):").grid(row=0, column=2, sticky="nw", padx=(20, 5))
+        self.lb_covars = tk.Listbox(col_frame, selectmode="extended", height=4, exportselection=False)
+        self.lb_covars.grid(row=0, column=3, rowspan=3, sticky="ew")
+
         ttk.Label(col_frame, text="Columns to Ignore:").grid(row=0, column=2, sticky="nw", padx=(20, 5))
         self.lb_ignore = tk.Listbox(col_frame, selectmode="extended", height=4, exportselection=False)
-        self.lb_ignore.grid(row=0, column=3, rowspan=3, sticky="ew")
+        self.lb_ignore.grid(row=0, column=5, rowspan=3, sticky="ew")
+
 
     def build_mode_tabs(self):
         lf = ttk.LabelFrame(self.root, text="2. Limma and Logistic Regression Settings", padding=10)
@@ -226,8 +231,10 @@ class ProteomicsGUI:
                 self.cb_time['values'] = ["None"] + cols
                 
                 self.lb_ignore.delete(0, tk.END)
+                self.lb_covars.delete(0, tk.END)
                 for col in cols:
                     self.lb_ignore.insert(tk.END, col)
+                    self.lb_covars.insert(tk.END, col)
                     
                 self.update_group_values()
                 self.update_time_values()
@@ -313,6 +320,7 @@ class ProteomicsGUI:
         CONFIG["CONDITION_COLUMN"] = self.v_group_col.get() if self.v_group_col.get() != "None" else None
         CONFIG["TIME_COLUMN"] = self.v_time_col.get() if self.v_time_col.get() != "None" else None
         CONFIG["UNNEEDED_COLUMNS"] = self.get_listbox_vals(self.lb_ignore)
+        CONFIG["COVARIATE_COLUMNS"] = self.get_listbox_vals(self.lb_covars)
         
         CONFIG["RUN_LIMMA"] = self.v_run_limma.get()
         CONFIG["RUN_LOGISTIC_REGRESSION"] = self.v_run_logreg.get()
