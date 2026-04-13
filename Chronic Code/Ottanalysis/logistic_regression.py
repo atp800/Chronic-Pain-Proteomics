@@ -159,12 +159,15 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     )
 
     bootstrapped_coefs = []
+    
     for i in range(n_iterations):
-            # Sample with replacement (stratify=y_encoded to prevent single-class samples)
+            # Sample with replacement (ADDED stratify=y_encoded to prevent single-class samples)
             X_boot, y_boot = resample(X_scaled, y_encoded, random_state=i, stratify=y_encoded)
             
             boot_model.fit(X_boot, y_boot)
             bootstrapped_coefs.append(boot_model.coef_.flatten())
+
+    bootstrapped_coefs = np.array(bootstrapped_coefs)
     
     # Calculate statistics
     mean_coefs = np.mean(bootstrapped_coefs, axis=0)
