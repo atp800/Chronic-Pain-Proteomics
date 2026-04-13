@@ -158,19 +158,28 @@ for current_loop_val in outer_loops:
             )
 
         elif MODE == "DELTA":
-            # same as group coparison, but using globally calculated delta dataframe
-            col_to_filter = CONFIG["CONDITION_COLUMN"]
-            df_2_groups = df_filtered[df_filtered[col_to_filter].astype(str).isin([str(base_val), str(target_val)])]
-            
-            run_statistical_tests(
-                df_subset=df_2_groups, 
-                group_col=CONFIG["CONDITION_COLUMN"], 
-                baseline_name=base_val, 
-                compare_name=target_val, 
-                relative_dir=relative_dir,
-                is_paired=False,    # Deltas collapse pairs into independent change values
-                is_delta=True
+            print(f"Transforming data into deltas ({CONFIG['DELTA_BASELINE']} to {current_loop_val})")
+            df_filtered = calculate_deltas(
+                df=df_filtered, 
+                id_col=CONFIG["ID_COLUMN"], 
+                time_col=CONFIG["TIME_COLUMN"], 
+                condition_col=CONFIG["CONDITION_COLUMN"], 
+                protein_cols=protein_cols, 
+                id_delimiter=CONFIG.get("ID_DELIMITER", "_"), 
+                baseline_time=CONFIG["DELTA_BASELINE"], 
+                compare_time=current_loop_val
             )
+            
+            # Re-attach covariates that calculate_deltas dropped ---
+            covariates = CONFIG.get("COVARIATE_COLUMNS", [])
+            if covariates:
+                # Extract IDs and covariates from the original data
+                meta_df = df_main[[CONFIG["ID_COLUMN"]] + covariates].drop_duplicates(subset=CONFIG["ID_COLUMN"])
+                # Merge them back onto our new delta dataframe
+                df_filtered = pd.merge(df_filtered, meta_df, on=CONFIG["ID_COLUMN"], how="left")
+            # ---------------------------------------------------------------
+            
+            loop_folder_name = f"{CONFIG['DELTA_BASELINE']}_to_{current_loop_val}"
 
 print("\n-----------------------------------")
 

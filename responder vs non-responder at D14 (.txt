@@ -71,6 +71,12 @@ Questions:
 - how did you differentiate responders and non-responders
 
 
+
+NEW QUESTIONS:
+- do you only have data for the soluble fraction?
+- what is PPT
+
+
 - responder if over 20% threshold in sensitivity
 - can we get the raw change in sensitivity? 
 	- could see if there's a correlation

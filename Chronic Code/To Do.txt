@@ -92,7 +92,12 @@ suppress warnings printed when hinge model is running
 replace dropna with impute helper function
 add some diagnostic print statments
 fix subfolders fro limma and logistic regression
+Add multi-threading
+add progress bar for logistic regression bootstrapping
+display print statments/progress bars in gui window
 WHERE ARE THE CONTROLS - compare controls to responders and non-responders
+
+Clustering algorithm based on ppt%, find mean of each cluster, find centre point between the means 
 
 
 Don't give warnings about limma or logistic settings if boxes to run aren't ticked
