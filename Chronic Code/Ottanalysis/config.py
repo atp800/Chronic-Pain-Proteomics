@@ -7,8 +7,8 @@ CONFIG = {
     
     # File Paths
     "INPUT_FILE_PATH": "C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Data With Covariates - All Fractions.xlsx",
-    "SHEET_NAME": "Sheet 1",
-    "OUTPUT_FOLDER": "Chronic Code/Ottanalysis/Analysis_Output/Soluble",
+    "SHEET_NAME": "s",
+    "OUTPUT_FOLDER": "C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Soluble",
     
     # Column Names
     "ID_COLUMN": "Sample_ID",
