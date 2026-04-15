@@ -67,7 +67,7 @@ def plot_best_fit(protein_name, df_long, best_peak, fit_results, output_path, su
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Plot individual participant data
-    sns.lineplot(data=df_long, x=time_col, y='value', units=subject_id_col, estimator=None,
+    sns.lineplot(data=df_long, x=time_numeric, y='value', units=subject_id_col, estimator=None,
                  color='grey', alpha=0.3, ax=ax, label='_nolegend_')
 
     # Plot the fixed-effect (average) hinge model
@@ -300,7 +300,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         # Re-fit the best models for plotting (better than storing whole models)
         try:
             model_type = row['Model_Type']
-            if model_type == "Mixed Effects":
+            if model_type == "Mixed-Effects":
                 md = smf.mixedlm("value ~ slope1 + slope2_change", df_plot_long, groups=df_plot_long['subject_id_col'])
                 mdf = md.fit(method=["lbfgs"])
             else:
