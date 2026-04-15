@@ -51,14 +51,16 @@ def plot_best_fit(protein_name, df_long, best_peak, fit_results, output_path, su
     slope2_change = fit_results.params['slope2_change']
     slope2 = slope1 + slope2_change
     
-    # Generate predicted values for the fixed effect line
-    numeric_timepoints = sorted(df_long[time_numeric].unique())     # time_numeric is timepoint labels covnerted to numeric values
+# Generate predicted values for the fixed effect line
+    numeric_timepoints = sorted(df_long[time_numeric].unique())
     pred_vals = []
+    
     for t_num in numeric_timepoints:
-        if t_num <= best_peak:
-            pred_vals.append(intercept + slope1 * t_num)
-        else:
-            pred_vals.append(intercept + slope1 * t_num + slope2_change * (t_num - best_peak))
+        slope1_val = t_num - best_peak
+        slope2_change_val = max(0, t_num - best_peak)
+        
+        pred = intercept + (slope1 * slope1_val) + (slope2_change * slope2_change_val)
+        pred_vals.append(pred)
 
     # Plotting
     plt.style.use('seaborn-v0_8-whitegrid')
@@ -164,21 +166,32 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
 
             try:
-                ########## FIrst attempt to fit mixed-effects model ############
-                # Random effect - each patient has their own intercept
+                ########## First attempt to fit mixed-effects model ############
                 md = smf.mixedlm("value ~ slope1 + slope2_change", df_long, groups=df_long['subject_id_col'])
-                mdf = md.fit(method=["lbfgs"]) # lbfgs is an optimiser
-                model_type = "Mixed Effects"
-            except (ValueError, ZeroDivisionError, Exception) as e:     # model fails to converge
-                print(f"Could not fit mixed-effects model for {protein} at peak {peak}: {e}")
+                mdf = md.fit(method=["lbfgs"])
+                
+                # FIX: statsmodels returns NaN for AIC if the covariance matrix is singular
+                if pd.isna(mdf.aic):
+                    raise ValueError("Mixed model converged but produced NaN AIC (singular covariance).")
+                    
+                model_type = "Mixed-Effects" # Added hyphen to match your later pandas filter
+                
+            except (ValueError, ZeroDivisionError, Exception) as e:
+                # Silenced the print statement here so it doesn't spam your console 2000 times
+                # print(f"Could not fit mixed-effects model for {protein} at peak {peak}: {e}")
                 
                 try:
                     ########## Fallback - attempt to fit fixed-effects (OLS) model ############
                     md_ols = smf.ols("value ~ slope1 + slope2_change", data=df_long)
                     mdf = md_ols.fit()
+                    
+                    # Also ensure OLS didn't return NaN
+                    if pd.isna(mdf.aic):
+                        continue
+                        
                     model_type = "Fixed-Effects"
                 except Exception as e:
-                    print(f"Could not fit fixed-effects model for {protein} at peak {peak}: {e}")
+                    # print(f"Could not fit fixed-effects model for {protein} at peak {peak}: {e}")
                     continue    # skip to next candidate peak if both models fail
 
 
@@ -281,8 +294,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         df_plot_long.rename(columns={protein_name: 'value'}, inplace=True)
         df_plot_long.dropna(inplace=True)
         
-
-        df_plot_long['slope1'] = df_plot_long['time_numeric']
+        df_plot_long['slope1'] = df_plot_long['time_numeric'] - best_peak
         df_plot_long['slope2_change'] = (df_plot_long['time_numeric'] - best_peak).clip(lower=0)
         
         # Re-fit the best models for plotting (better than storing whole models)
