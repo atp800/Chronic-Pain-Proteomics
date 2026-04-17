@@ -86,24 +86,18 @@ Model developments:
 - adding co-variates would be a great idea (if possible for all analysis, priority for limma analyses)
 
 --------------------------------------------------------------
-SEND LOGISITC REGRESSION DATA - WITH EXPALANTION OF PLOTS/PERMUTATION/BOOTSTRAPPING
-SEND PAULINE LATEST VERSION OF CODE
 suppress warnings printed when hinge model is running
-replace dropna with impute helper function
-add some diagnostic print statments
-fix subfolders fro limma and logistic regression
+replace dropna with impute helper function - DONE???
 Add multi-threading
-add progress bar for logistic regression bootstrapping
+add progress bar for logistic regression bootstrapping and for hinge model
 display print statments/progress bars in gui window
 WHERE ARE THE CONTROLS - compare controls to responders and non-responders
 
 Clustering algorithm based on ppt%, find mean of each cluster, find centre point between the means 
 
-
 Don't give warnings about limma or logistic settings if boxes to run aren't ticked
 - same with hinge
 - check limma only runs when box is ticked, if not just remove print statements if not running
-
 
 Hinge model should grey out or give a warning when less than three timepoints exist (check necessary minimum)
 
