@@ -1,0 +1,5 @@
+Can we mathematically check where the sensitivity threshold should be 
+- currently 20% - semi-arbitrary 
+- how else 
+- do regression - look at point where responders diverge  - should be like a sigmoid curve
+- use just relevant proteins

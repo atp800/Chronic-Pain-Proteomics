@@ -20,6 +20,20 @@ from sklearn.utils import resample
 
 from helpers import groupwise_missing_filter, impute_missing_vals
 
+##########################################################################
+# Version details for reproducibility/citations
+print("\n--- Pandas and sklearn Version Information ---")
+
+pandas_version = pd.__version__
+print(f"pandas version: {pandas_version}")
+
+import sklearn
+sklearn_version = sklearn.__version__
+print(f"scikit-learn version: {sklearn_version}")
+########################################################################
+
+
+
 # Suppress the max_iter ConvergenceWarnings from scikit-learn
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 

@@ -57,6 +57,21 @@ from rpy2.robjects.conversion import localconverter
 from rpy2.robjects import pandas2ri, Formula
 from rpy2.robjects.packages import importr
 
+##########################################################################
+# Version details for reproducibility/citations
+print("\n--- R and Limma Version Information ---")
+
+r_version = ro.r('R.version.string')[0]
+print(f"R version: {r_version}")
+
+limma_version = ro.r('as.character(packageVersion("limma"))')[0]
+print(f"limma version: {limma_version}")
+
+session_info = "\n".join(ro.r('capture.output(sessionInfo())'))
+print(f"Session Info:\n{session_info}")
+
+rpy2_version = rpy2.__version__
+print(f"rpy2 version: {rpy2_version}")
 
 ##########################################################################
 
