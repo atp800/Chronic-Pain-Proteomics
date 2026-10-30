@@ -3,3 +3,6 @@ Can we mathematically check where the sensitivity threshold should be
 - how else 
 - do regression - look at point where responders diverge  - should be like a sigmoid curve
 - use just relevant proteins
+
+
+5354567955862254
