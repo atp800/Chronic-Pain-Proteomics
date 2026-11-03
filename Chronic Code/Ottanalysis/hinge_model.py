@@ -158,6 +158,13 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         return
 
     all_results = []
+    all_candidate_results = []
+
+    # Map numeric times back to their original labels, such as "D7".
+    time_label_map = dict(
+        zip(df_copy['time_numeric'], df_copy[time_col])
+    )
+    
     failed_protein_count = 0        # number of proteins where code fails to fit mixed effects model
     no_variance_count = 0
 
@@ -180,6 +187,27 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
         # Iterate through numeric candidate peaks to find the best fit
         for peak in candidate_peaks_numeric:
+            # Create the row before fitting so failed candidates remain visible - a failed fit leaves a visible row with a blank p-value
+            candidate_record = {
+                'Protein': protein,
+                'Candidate_Time': time_label_map.get(peak, str(peak)),
+                'Candidate_Time_Numeric': peak,
+                'Model_Type': None,
+                'AIC': np.nan,
+                'Slope_2_Change_PValue': np.nan,
+                'Status': 'Fit failed'
+            }
+            all_candidate_results.append(candidate_record)
+
+            # A hinge requires measurements on both sides.
+            earliest_time = df_long['time_numeric'].min()
+            latest_time = df_long['time_numeric'].max()
+
+            if not earliest_time < peak < latest_time:
+                candidate_record['Status'] = 'No data on both sides'
+                continue
+
+
             df_long['slope1'] = df_long['time_numeric'] - peak                            # Initial slope (before the peak)    - previously defined as time_numeric, now defined as relative to the peak to make th epredictors less correlated and improve model convergence
             df_long['slope2_change'] = (df_long['time_numeric'] - peak).clip(lower=0)
             
@@ -216,6 +244,26 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                     # print(f"Could not fit fixed-effects model for {protein} at peak {peak}: {e}")
                     continue    # skip to next candidate peak if both models fail
 
+            
+
+            # Only accept fits with a usable AIC.
+            if not np.isfinite(mdf.aic):
+                candidate_record['Status'] = 'Non-finite AIC'
+                continue
+
+            if model_type == 'Mixed-Effects' and not mdf.converged:
+                candidate_record['Status'] = 'Did not converge'
+                continue
+
+            # Store this candidate's results, whether or not it wins.
+            candidate_record.update({
+                'Model_Type': model_type,
+                'AIC': mdf.aic,
+                'Slope_2_Change_PValue': mdf.pvalues.get(
+                    'slope2_change', np.nan
+                ),
+                'Status': 'Fitted'
+            })
 
             # Check if current model is better than the previous best
             if mdf.aic < best_model['aic']:
@@ -292,10 +340,36 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     df_mixed_only = df_results[df_results['Model_Type'] == 'Mixed-Effects'][['Protein', 'Slope_2_Change_PValue']]  # Get list of proteins with fitted mixed-effects models
     df_fixed_only = df_results[df_results['Model_Type'] == 'Fixed-Effects'][['Protein', 'Slope_2_Change_PValue']]  # Get list of proteins with fitted fixed-effects models
 
+
+    # Convert the candidate records into a table.
+    df_candidates = pd.DataFrame(all_candidate_results)
+
+    # Look up the selected hinge time for each protein.
+    best_peak_by_protein = df_results.set_index(
+        'Protein'
+    )['Best_Peak_Numeric']
+
+    df_candidates['Is_Best_Hinge'] = (
+        df_candidates['Status'].eq('Fitted')
+        & df_candidates['Candidate_Time_Numeric'].eq(
+            df_candidates['Protein'].map(best_peak_by_protein)
+        )
+    )
+
+    df_candidates.sort_values(
+        by=['Protein', 'Candidate_Time_Numeric'],
+        inplace=True
+    )
+
     with pd.ExcelWriter(output_filepath, engine='xlsxwriter') as writer:
-        df_results.to_excel(writer, sheet_name='All_Model_Results', index=False)
-        df_fixed_only.to_excel(writer, sheet_name='Fixed_Effects_Models', index=False)
-        df_mixed_only.to_excel(writer, sheet_name='Mixed_Effects_Models', index=False)
+        df_results.to_excel(
+            writer, sheet_name='All_Model_Results', index=False)
+        df_fixed_only.to_excel(
+            writer, sheet_name='Fixed_Effects_Models', index=False)
+        df_mixed_only.to_excel(
+            writer, sheet_name='Mixed_Effects_Models', index=False)
+        df_candidates.to_excel(
+            writer, sheet_name='All_Candidate_Timepoints', index=False)
     print(f"\nHinge model results saved to: {output_filepath}")
 
 
