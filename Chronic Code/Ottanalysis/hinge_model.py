@@ -41,7 +41,7 @@ warnings.simplefilter('ignore', ConvergenceWarning)
 
 
 
-def plot_best_fit(protein_name, df_long, best_peak, fit_results, output_path, subject_id_col, time_col, time_numeric):
+def plot_best_fit(protein_name, df_long, best_peak, fit_results, output_path, subject_id_col, time_col, time_numeric, observed_means):
     """
     Generates and saves a plot visualizing the raw data and the fitted hinge model.
     """
@@ -72,6 +72,19 @@ def plot_best_fit(protein_name, df_long, best_peak, fit_results, output_path, su
 
     # Plot the fixed-effect (average) hinge model
     ax.plot(numeric_timepoints, pred_vals, 'r-', linewidth=3, label='Fitted Hinge Model (Average)')
+
+    # Plot observed sample means calculated before imputation.
+    ax.plot(
+        observed_means.index,
+        observed_means.to_numpy(),
+        color='darkgreen',
+        linestyle='--',
+        marker='o',
+        linewidth=2,
+        markersize=6,
+        label='Observed Mean (Before Imputation)',
+        zorder=4
+    )
     
     # Add a vertical line at the peak
     ax.axvline(x=best_peak, color='b', linestyle='--', label=f'Peak/Trough at {best_peak:.2f}')
@@ -119,6 +132,15 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     if failed_conversions > 0:
         print(f"Dropped rows where time couldn't be extracted - try reformating to timepoints to integers: {failed_conversions}")
         df_copy.dropna(subset=['time_numeric'], inplace=True)
+
+    # Calculate observed means at each time point before imputation.
+    # Missing measurements are excluded separately for each protein.
+    observed_means = (
+        df_copy
+        .groupby('time_numeric')[protein_cols]
+        .mean()
+        .sort_index()
+    )
 
     # Impute missing values in protein columns (imputes within subject)
     df_copy[protein_cols] = (
@@ -310,10 +332,15 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             plot_filename = f"{protein_name.replace('/', '_')}_hinge_plot.png"
             plot_filepath = os.path.join(plots_dir, plot_filename)
             
-            plot_best_fit(protein_name, df_plot_long, best_peak, mdf, plot_filepath,
+            plot_best_fit(protein_name, 
+                          df_plot_long, 
+                          best_peak, 
+                          mdf, 
+                          plot_filepath,
                           subject_id_col='subject_id_col',
                           time_col=time_col,
-                          time_numeric='time_numeric')
+                          time_numeric='time_numeric',
+                          observed_means=observed_means[protein_name])
         except Exception as e:
             print(f"Could not generate plot for {protein_name}: {e}")
 
