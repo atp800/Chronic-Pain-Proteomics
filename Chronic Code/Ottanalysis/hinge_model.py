@@ -218,7 +218,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             try:
                 ########## First attempt to fit mixed-effects model ############
                 md = smf.mixedlm("value ~ slope1 + slope2_change", df_long, groups=df_long['subject_id_col'])
-                mdf = md.fit(method=["lbfgs"])
+                mdf = md.fit(method=["lbfgs"], reml=False)  # Use REML=False for AIC comparison
                 
                 # FIX: statsmodels returns NaN for AIC if the covariance matrix is singular
                 if pd.isna(mdf.aic):
@@ -398,7 +398,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             model_type = row['Model_Type']
             if model_type == "Mixed-Effects":
                 md = smf.mixedlm("value ~ slope1 + slope2_change", df_plot_long, groups=df_plot_long['subject_id_col'])
-                mdf = md.fit(method=["lbfgs"])
+                mdf = md.fit(method=["lbfgs"], reml=False)
             else:
                 md_ols = smf.ols("value ~ slope1 + slope2_change", data=df_plot_long)
                 mdf = md_ols.fit()
