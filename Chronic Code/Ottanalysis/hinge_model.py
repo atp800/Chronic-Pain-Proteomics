@@ -419,3 +419,4 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             print(f"Could not generate plot for {protein_name}: {e}")
 
     print(f"Plots saved in: {plots_dir}")
+    return output_filepath

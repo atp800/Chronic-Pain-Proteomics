@@ -8,6 +8,7 @@ from helpers import calculate_deltas, derive_subject_ids
 from limma import run_limma
 from logistic_regression import run_logistic_regression
 from hinge_model import run_hinge_model
+from compare_hinge_results import compare_hinge_results
 
 
 #################################################
@@ -204,6 +205,7 @@ if CONFIG.get("RUN_HINGE", False):
 
     # If the user left the groups listbox empty, run on the whole dataset as one group
     hinge_groups = CONFIG["HINGE_GROUPS_TO_RUN"] if CONFIG["HINGE_GROUPS_TO_RUN"] else [None]
+    hinge_result_files = {}
 
     for group in hinge_groups:
         
@@ -221,7 +223,7 @@ if CONFIG.get("RUN_HINGE", False):
         os.makedirs(output_subfolder, exist_ok=True)
 
         
-        run_hinge_model(
+        result_file = run_hinge_model(
             df=df_hinge_subset,
             protein_cols=protein_cols,
             time_col=CONFIG["TIME_COLUMN"],
@@ -231,6 +233,13 @@ if CONFIG.get("RUN_HINGE", False):
             output_dir=output_subfolder,
             subject_id_delimiter=CONFIG.get("ID_DELIMITER", "-")
         )
+
+        if group is not None and result_file is not None:
+            hinge_result_files[str(group)] = result_file
+
+    # Compare hinge results across groups if more than one group was run
+    compare_hinge_results(hinge_result_files, CONFIG)
+
 
 print("\n-----------------------------------")
 print("j'ai fini")
