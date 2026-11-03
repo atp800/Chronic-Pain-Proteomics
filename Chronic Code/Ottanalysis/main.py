@@ -54,7 +54,7 @@ protein_cols =[c for c in df_main.columns if c not in exclude_cols]
 #################################################
 # ANALYSES CALL FUNCTION
 #################################################
-def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, relative_dir, is_paired, is_delta):
+def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, relative_dir, is_paired, is_delta, df_subset_imputed=None):
     """
     This function expects a dataframe with EXACTLY 2 conditions or groups
     """
@@ -69,9 +69,30 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, rel
         run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, limma_dir, is_paired, is_delta, CONFIG)
         
     if CONFIG.get("RUN_LOGISTIC_REGRESSION", False):
-        logistic_dir = os.path.join(CONFIG["OUTPUT_FOLDER"], "Logistic Regression", relative_dir)
+        logistic_dir = os.path.join(
+            CONFIG["OUTPUT_FOLDER"],
+            "Logistic Regression",
+            relative_dir
+        )
         os.makedirs(logistic_dir, exist_ok=True)
-        run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, logistic_dir)
+
+        logistic_data = (
+            df_subset_imputed if is_delta else df_subset
+        )
+
+        if logistic_data is None:
+            raise ValueError(
+                "Delta logistic regression requires the imputed delta dataset"
+            )
+
+        run_logistic_regression(
+            logistic_data,
+            group_col,
+            protein_cols,
+            baseline_name,
+            compare_name,
+            logistic_dir
+        )
 
 ################################################
 # Loops for running limma/logistic analyses
@@ -86,6 +107,7 @@ for current_loop_val in outer_loops:
     
     # --- SUBSET DATA BY OUTER LOOP (e.g. Filter to just "D0" or just "Responders") ---
     df_filtered = df_main.copy()
+    df_filtered_imputed = None
     print("\n------------------------------------------------------------------")
     print("------------------------------------------------------------------")
     print("------------------------------------------------------------------")
@@ -103,16 +125,28 @@ for current_loop_val in outer_loops:
         elif MODE == "DELTA":
             # Calculate deltas if in delta mode
             print(f"Transforming data into deltas ({CONFIG['DELTA_BASELINE']} to {current_loop_val})")
+            # Capture the original input for both delta calculations.
+            delta_kwargs = {
+                "df": df_filtered,
+                "id_col": CONFIG["ID_COLUMN"],
+                "time_col": CONFIG["TIME_COLUMN"],
+                "condition_col": CONFIG["CONDITION_COLUMN"],
+                "protein_cols": protein_cols,
+                "id_delimiter": CONFIG["ID_DELIMITER"],
+                "baseline_time": CONFIG["DELTA_BASELINE"],
+                "compare_time": current_loop_val,
+            }
+            # Limma input: preserve missing measurements.
             df_filtered = calculate_deltas(
-                df=df_filtered, 
-                id_col=CONFIG["ID_COLUMN"], 
-                time_col=CONFIG["TIME_COLUMN"], 
-                condition_col=CONFIG["CONDITION_COLUMN"], 
-                protein_cols=protein_cols, 
-                id_delimiter=CONFIG.get("ID_DELIMITER", "_"), 
-                baseline_time=CONFIG["DELTA_BASELINE"], 
-                compare_time=current_loop_val
+                **delta_kwargs,
+                impute=False
             )
+            # Logistic input: retain imputation before subtraction.
+            if CONFIG.get("RUN_LOGISTIC_REGRESSION", False):
+                df_filtered_imputed = calculate_deltas(
+                    **delta_kwargs,
+                    impute=True
+                )
 
             # Re-attach covariates
             covariates = CONFIG.get("COVARIATE_COLUMNS", [])
@@ -127,6 +161,14 @@ for current_loop_val in outer_loops:
                 meta_df = meta_df.drop_duplicates(subset=CONFIG["ID_COLUMN"])
                 # Merge back onto df_filtered
                 df_filtered = pd.merge(df_filtered, meta_df, on=CONFIG["ID_COLUMN"], how="left")
+
+                if df_filtered_imputed is not None:
+                    df_filtered_imputed = pd.merge(
+                        df_filtered_imputed,
+                        meta_df,
+                        on=CONFIG["ID_COLUMN"],
+                        how="left"
+                    )
 
             loop_folder_name = f"{CONFIG['DELTA_BASELINE']}_to_{current_loop_val}"
     
@@ -175,16 +217,34 @@ for current_loop_val in outer_loops:
 
         elif MODE == "DELTA":
             col_to_filter = CONFIG["CONDITION_COLUMN"]
-            df_2_groups = df_filtered[df_filtered[col_to_filter].astype(str).isin([str(base_val), str(target_val)])]
-            
+            selected_groups = [str(base_val), str(target_val)]
+
+            # Missing values preserved for limma.
+            df_2_groups = df_filtered[
+                df_filtered[col_to_filter]
+                .astype(str)
+                .isin(selected_groups)
+            ]
+
+            # Deltas calculated from imputed abundances for logistic regression.
+            df_2_groups_imputed = None
+
+            if df_filtered_imputed is not None:
+                df_2_groups_imputed = df_filtered_imputed[
+                    df_filtered_imputed[col_to_filter]
+                    .astype(str)
+                    .isin(selected_groups)
+                ]
+
             run_statistical_tests(
-                df_subset=df_2_groups, 
-                group_col=CONFIG["CONDITION_COLUMN"], 
-                baseline_name=base_val, 
-                compare_name=target_val, 
+                df_subset=df_2_groups,
+                group_col=CONFIG["CONDITION_COLUMN"],
+                baseline_name=base_val,
+                compare_name=target_val,
                 relative_dir=relative_dir,
                 is_paired=False,
-                is_delta=True
+                is_delta=True,
+                df_subset_imputed=df_2_groups_imputed
             )
 
 print("\n-----------------------------------")

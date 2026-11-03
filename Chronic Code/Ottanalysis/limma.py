@@ -4,8 +4,9 @@ import seaborn as sns
 import pandas as pd
 import glob
 from matplotlib.backends.backend_pdf import PdfPages
-from sklearn.feature_selection import VarianceThreshold
+# from sklearn.feature_selection import VarianceThreshold
 from helpers import impute_missing_vals, derive_subject_ids
+from helpers import derive_subject_ids
 
 ##################################################################
 # SET LOCATION OF R INSTALLATION
@@ -90,25 +91,35 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
 
 
     ######### PREPARE DATA ###########
-    X_limma = df_subset[protein_cols]
-    
-    # Remove zero-variance features
-    print("Removing zero-variance proteins")
-    X_temp_for_var = X_limma.fillna(0)                                    # Temporarily fill NaNs for variance calculation
-    selector = VarianceThreshold(threshold=0)                             # Increase threshold to 0.1 to remove low variance features
-    try:
-        selector.fit(X_temp_for_var)
-        cols_kept = X_limma.columns[selector.get_support()]
-        X_limma = X_limma[cols_kept]
-        print(f"Proteins after dropping low variance: {X_limma.shape[1]}")
-    except ValueError:
-        print("Warning: Variance filter failed (variance too low globally?), skipping.")
+    X_limma = df_subset[protein_cols].copy()
 
+    # Calculate variance using observed measurements only.
+    print("Removing proteins with insufficient observations or zero variance")      # Less than two measurements or no observed variation
 
-    # Impute missing values (unless already done in Delta)
-    if not is_delta and X_limma.isna().sum().sum() > 0:
-        print("Imputing missing values...")
-        X_limma = impute_missing_vals(X_limma, shift=1.8, width=0.3)
+    observed_counts = X_limma.count(axis=0)
+    observed_variances = X_limma.var(
+        axis=0,
+        skipna=True,
+        ddof=0
+    )
+
+    keep = (
+        (observed_counts >= 2)
+        & (observed_variances > 0)
+    )
+
+    X_limma = X_limma.loc[:, keep].copy()
+
+    print(f"Proteins retained for limma: {X_limma.shape[1]}")
+
+    if X_limma.empty:
+        print("Skipping limma: no proteins remain after filtering.")
+        return
+
+    print(
+        f"Missing protein values retained: "
+        f"{int(X_limma.isna().sum().sum())}"
+    )
 
 
     #########################################

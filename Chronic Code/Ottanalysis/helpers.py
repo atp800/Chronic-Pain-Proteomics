@@ -138,7 +138,7 @@ def derive_subject_ids(sample_id_list, delimiter):
 ##################################################################
 # CALCULATE DEALTAS FOR DELTA MODE
 ##################################################################
-def calculate_deltas(df, id_col, time_col, condition_col, protein_cols, id_delimiter, baseline_time, compare_time):
+def calculate_deltas(df, id_col, time_col, condition_col, protein_cols, id_delimiter, baseline_time, compare_time, impute=True):
     '''
     If selected in GUI, ENTIRE dataset is converted to difference scores based on selected DELTA_COLUMN
     All subsequent tests (Limma, LogReg etc.) will run on the change values
@@ -151,7 +151,12 @@ def calculate_deltas(df, id_col, time_col, condition_col, protein_cols, id_delim
     subjects = derive_subject_ids(df[id_col].tolist(), delimiter=id_delimiter)
     
     df_work = df.copy()
-    df_work[protein_cols] = impute_missing_vals(df_work[protein_cols])
+
+    if impute:
+        df_work[protein_cols] = impute_missing_vals(
+            df_work[protein_cols]
+        )
+
     df_work['Temp_Subject_ID'] = subjects
 
     try:
