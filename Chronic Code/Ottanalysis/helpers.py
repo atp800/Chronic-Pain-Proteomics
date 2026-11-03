@@ -171,9 +171,16 @@ def calculate_deltas(df, id_col, time_col, condition_col, protein_cols, id_delim
         vals_start = df_pivot.xs(baseline_time, axis=1, level=time_col)
         df_delta = vals_end - vals_start
         
-        n_original = len(df_pivot)
-        n_final = len(df_delta)
-        print(f"Subjects with complete pairs: {n_final} (Dropped {n_original - n_final})")
+        n_subjects = len(df_delta)
+        n_with_any_delta = int(
+            df_delta.notna().any(axis=1).sum()
+        )
+
+        print(f"Subjects in delta table: {n_subjects}")
+        print(
+            "Subjects with at least one non-missing delta: "
+            f"{n_with_any_delta}"
+        )
 
         # Restore group data
         if condition_col:
