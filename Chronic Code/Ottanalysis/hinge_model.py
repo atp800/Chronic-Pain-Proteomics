@@ -87,7 +87,7 @@ def plot_best_fit(protein_name, df_long, best_peak, fit_results, output_path, su
     )
     
     # Add a vertical line at the peak
-    ax.axvline(x=best_peak, color='b', linestyle='--', label=f'Peak/Trough at {best_peak:.2f}')
+    ax.axvline(x=best_peak, color='b', linestyle='--', label=f'Hinge point at {best_peak:.2f}')
     
     # Map numeric timepoints back to original timpoint labels for x-axis labels
     time_label_map = dict(zip(df_long[time_numeric], df_long[time_col]))
@@ -96,7 +96,10 @@ def plot_best_fit(protein_name, df_long, best_peak, fit_results, output_path, su
     ax.set_xticks(tick_locations)
     ax.set_xticklabels(tick_labels)
 
-    ax.set_title(f'Mixed-Effects Hinge Model for: {protein_name}\n(Best Fit AIC: {fit_results.aic:.2f})')
+    ax.set_title(
+        f'Hinge Model for: {protein_name}\n'
+        f'(Best Fit AIC: {fit_results.aic:.2f})'
+    )
     ax.set_xlabel('Time')
     ax.set_ylabel('Log2 Abundance')
     ax.legend()
@@ -114,6 +117,10 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     best model based on AIC, and saves the results and visualisations.
     """
     print("Creating hinge models (attempts mixed effects, falls back to fixed effects on failure)")
+
+    if not protein_cols:
+        print("Hinge analysis skipped: no protein columns found.")
+        return
 
     df_copy = df.copy()
     
@@ -152,7 +159,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
     # Convert candidate peaks
     candidate_peaks_numeric = [convert_timepoint_to_number(str(peak)) for peak in candidate_peaks]
-    candidate_peaks_numeric = [p for p in candidate_peaks_numeric if p is not None] # Remove candidate peaks that couldn't be covnerted to a numeric value
+    candidate_peaks_numeric = list(dict.fromkeys(p for p in candidate_peaks_numeric if p is not None)) # Remove candidate peaks that couldn't be covnerted to a numeric value, avoiding duplicates
     if not candidate_peaks_numeric:
         print("Candidate peaks couldn't be converted to numeric timepoints - try reformatting timepoints to integers")
         return
@@ -217,15 +224,29 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
             try:
                 ########## First attempt to fit mixed-effects model ############
-                md = smf.mixedlm("value ~ slope1 + slope2_change", df_long, groups=df_long['subject_id_col'])
-                mdf = md.fit(method=["lbfgs"], reml=False)  # Use REML=False for AIC comparison
-                
-                # FIX: statsmodels returns NaN for AIC if the covariance matrix is singular
-                if pd.isna(mdf.aic):
-                    raise ValueError("Mixed model converged but produced NaN AIC (singular covariance).")
-                    
-                model_type = "Mixed-Effects" # Added hyphen to match your later pandas filter
-                
+                md = smf.mixedlm(
+                    "value ~ slope1 + slope2_change",
+                    df_long,
+                    groups=df_long['subject_id_col']
+                )
+
+                mdf = md.fit(
+                    method=["lbfgs"],
+                    reml=False
+                )
+
+                if not mdf.converged:
+                    raise ValueError(
+                        "Mixed-effects model did not converge"
+                    )
+
+                if not np.isfinite(mdf.aic):
+                    raise ValueError(
+                        "Mixed-effects model produced non-finite AIC"
+                    )
+
+                model_type = "Mixed-Effects"
+
             except (ValueError, ZeroDivisionError, Exception) as e:
                 # Silenced the print statement here so it doesn't spam your console 2000 times
                 # print(f"Could not fit mixed-effects model for {protein} at peak {peak}: {e}")
@@ -314,7 +335,25 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         print("Unique times:", df_long['time_numeric'].unique())
         print("Subjects:", df_long['subject_id_col'].nunique())
         print("Value std:", df_long['value'].std())
-        ############################################### 
+        ###############################################
+        # If no valid models were fitted, still save the candidate diagnostics for inspection:
+        if all_candidate_results:
+            diagnostic_path = os.path.join(
+                output_dir,
+                "hinge_candidate_diagnostics.xlsx"
+            )
+
+            df_diagnostics = pd.DataFrame(all_candidate_results)
+            df_diagnostics['Is_Best_Hinge'] = False
+
+            df_diagnostics.to_excel(
+                diagnostic_path,
+                sheet_name='All_Candidate_Timepoints',
+                index=False,
+                engine='xlsxwriter'
+            )
+
+            print(f"All fittings failed. Candidate diagnostics saved to: {diagnostic_path}")
         return
     if failed_protein_count > 0:
         print(f"\nNote: {failed_protein_count} proteins were skipped as no model (mixed or fixed) could be fitted.")

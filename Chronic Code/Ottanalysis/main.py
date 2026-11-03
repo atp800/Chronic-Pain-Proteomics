@@ -122,7 +122,7 @@ for current_loop_val in outer_loops:
                 
                 # Strip the "-D11" off the original IDs so they match the new Delta dataframe
                 raw_ids = meta_df[CONFIG["ID_COLUMN"]].tolist()
-                meta_df[CONFIG["ID_COLUMN"]] = derive_subject_ids(raw_ids, delimiter="-")
+                meta_df[CONFIG["ID_COLUMN"]] = derive_subject_ids(raw_ids, delimiter=CONFIG["ID_DELIMITER"])
                 # Drop duplicates (Age/Gender are identical across timepoints for the same person)
                 meta_df = meta_df.drop_duplicates(subset=CONFIG["ID_COLUMN"])
                 # Merge back onto df_filtered
