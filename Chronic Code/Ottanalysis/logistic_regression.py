@@ -8,9 +8,9 @@ import warnings
 from sklearn.exceptions import ConvergenceWarning
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import GridSearchCV, GroupKFold, LeaveOneGroupOut, LeaveOneOut, permutation_test_score
+from sklearn.model_selection import GridSearchCV, GroupKFold, LeaveOneGroupOut, LeaveOneOut
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import roc_curve, auc, confusion_matrix, accuracy_score, f1_score
+from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, accuracy_score, f1_score
 from sklearn.base import clone
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils import resample
@@ -81,30 +81,76 @@ def _fit_tuned_model(X, y, delta, participant_ids=None):
     return search.fit(X, y, groups=participant_ids).best_estimator_
 
 
-def _leave_one_out_probabilities(X, y, delta, participant_ids=None):
+def _leave_one_out_probabilities(X, y, delta, participant_ids=None, *, show_progress=True):
     outer = LeaveOneOut() if participant_ids is None else LeaveOneGroupOut()
     n_folds = outer.get_n_splits(X, y, participant_ids)
     probabilities = np.empty((len(X), 2))
     for i, (train, test) in enumerate(outer.split(X, y, participant_ids), start=1):
-        filled = 40 * i // n_folds
-        bar = '█' * filled + '-' * (40 - filled)
-        print(f'\rProgress: |{bar}| {100 * i // n_folds}% ({i}/{n_folds})', end='', flush=True)
+        if show_progress:
+            filled = 40 * i // n_folds
+            bar = '█' * filled + '-' * (40 - filled)
+            print(f'\rProgress: |{bar}| {100 * i // n_folds}% ({i}/{n_folds})', end='', flush=True)
         train_ids = None if participant_ids is None else participant_ids[train]
         model = _fit_tuned_model(X.iloc[train], y[train], delta, train_ids)
         probabilities[test] = model.predict_proba(X.iloc[test])
-    print("\nValidation Complete.\n")
+    if show_progress:
+        print("\nValidation Complete.\n")
     return probabilities
+
+
+def _participant_pairs(participant_ids):
+    """Two input row positions per participant, after checking for complete pairs."""
+    return np.argsort(participant_ids, kind="stable").reshape(-1, 2)
 
 
 def _bootstrap_rows(y, participant_ids, n_iterations):
     if participant_ids is None:
         units, strata = np.arange(len(y)), y
     else:
-        # Each row of units contains both input positions for one complete pair.
-        units = np.argsort(participant_ids, kind="stable").reshape(-1, 2)
+        units = _participant_pairs(participant_ids)
         strata = None
     for seed in range(n_iterations):
         yield resample(units, replace=True, stratify=strata, random_state=seed).ravel()
+
+
+def _pooled_auc(y, probabilities):
+    if not np.isfinite(probabilities).all():
+        return np.nan
+    return roc_auc_score(y, probabilities[:, 1])
+
+
+def _nested_permutation_test(X, y, delta, participant_ids, observed_auc, *, n_permutations=100):
+    """Compare the observed pooled held-out AUC with the same procedure under shuffled labels."""
+    if not np.isfinite(observed_auc) or n_permutations < 1:
+        raise ValueError("A finite observed AUC and at least one permutation are required.")
+    rng = np.random.RandomState(42)
+    pairs = None if participant_ids is None else _participant_pairs(participant_ids)
+    scores = np.empty(n_permutations)
+    # All fitting steps are deterministic. Count repeated labelings on every draw,
+    # but run the nested search only once per distinct assignment for this comparison.
+    scores_by_labels = {y.tobytes(): observed_auc}
+    for i in range(n_permutations):
+        print(f'\rPermutation {i + 1}/{n_permutations}', end='', flush=True)
+        if pairs is None:
+            labels = rng.permutation(y)
+        else:
+            labels = y.copy()
+            for pair in pairs:
+                labels[pair] = rng.permutation(y[pair])
+        key = labels.tobytes()
+        if key not in scores_by_labels:
+            probabilities = _leave_one_out_probabilities(X, labels, delta, participant_ids, show_progress=False)
+            score = _pooled_auc(labels, probabilities)
+            if not np.isfinite(score):
+                raise ValueError("A permuted held-out AUC was undefined.")
+            scores_by_labels[key] = score
+        scores[i] = scores_by_labels[key]
+    print()
+
+    # Count ties, including equal rank-based AUCs that differ only by roundoff.
+    tied = np.isclose(scores, observed_auc, rtol=1e-14, atol=0)
+    extreme = np.count_nonzero((scores > observed_auc) | tied)
+    return scores, (extreme + 1) / (n_permutations + 1)
 
 
 def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir,
@@ -166,9 +212,14 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
         print(f"\nSkipping this logistic comparison: {exc}")
         return
 
+    observed_auc = _pooled_auc(y_encoded, probabilities)
+    if not np.isfinite(observed_auc):
+        print("Skipping logistic comparison: the observed held-out ROC AUC was undefined.")
+        return
     y_pred_cv = probabilities.argmax(axis=1)
     y_probs_cv = probabilities[:, 1]
     print(f"\n\n--- Model Performance ({cv_label} Estimate) ---")
+    print(f"Pooled held-out ROC AUC: {observed_auc:.4f}")
     print(f"Accuracy: {accuracy_score(y_encoded, y_pred_cv):.4f}")
     print(f"F1 Score: {f1_score(y_encoded, y_pred_cv):.4f}")
     print(f"Confusion Matrix:\n{confusion_matrix(y_encoded, y_pred_cv)}\n")
@@ -235,28 +286,16 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     print(f"Saved features and stability metrics to: {output_file_path}")
 
 
-    # Hyperparameters remain fixed for this diagnostic; each fold and each
-    # permutation refits the preprocessing using its own training labels.
-    print("\nPermutation check at the final hyperparameters (tuning is not repeated)")
+    print("\nPermutation test of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.")
     if paired:
-        print("Swapping visit labels only within participants, with participant-grouped CV.")
-    valid_permutation = False
+        print("Swapping visit labels only within participants, with participant-held-out validation.")
+    permutation_scores = None
     try:
-        # groups restricts label shuffling; the CV splitter keeps each pair in one fold.
-        score, permutation_scores, pvalue = permutation_test_score(
-            full_model, X, y_encoded, scoring="roc_auc", cv=_validation_cv(y_encoded, participant_ids),
-            groups=participant_ids,
-            n_permutations=100, n_jobs=-1, random_state=42
-        )
-        valid_permutation = np.isfinite(score) and np.isfinite(permutation_scores).all()
-    except NoEligibleProteins as exc:
-        print(f"Permutation result unavailable: {exc}")
+        permutation_scores, pvalue = _nested_permutation_test(X, y_encoded, delta, participant_ids, observed_auc)
+    except ValueError as exc:
+        print(f"\nPermutation result unavailable: {exc}")
     else:
-        if not valid_permutation:
-            print("Permutation result unavailable: at least one AUC was undefined.")
-    if valid_permutation:
-        print(f"Fixed-parameter CV AUC: {score:.4f}")
-        print(f"Fixed-parameter permutation p-value: {pvalue:.4f}")
+        print(f"Nested CV permutation p-value ({len(permutation_scores)} draws): {pvalue:.4f}")
 
 
     ######### VISUALISATION ###########
@@ -266,10 +305,9 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
         # Plot 1: ROC curve
         if len(classes) == 2:
             fpr, tpr, _ = roc_curve(y_encoded, y_probs_cv)
-            roc_auc = auc(fpr, tpr)
             
             plt.figure(figsize=(8, 6))
-            plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (CV AUC = {roc_auc:.2f})')
+            plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (CV AUC = {observed_auc:.2f})')
             plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
             plt.xlabel('False Positive Rate')
             plt.ylabel('True Positive Rate')
@@ -280,14 +318,14 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
             plt.close()
 
         # Plot II: Permutation distribution plot
-        if valid_permutation:
+        if permutation_scores is not None:
             plt.figure(figsize=(8, 6))
             plt.hist(permutation_scores, bins=20, density=True, alpha=0.7, color='gray', label='Null Dist (Permuted)')
-            plt.axvline(score, color='red', linestyle='dashed', linewidth=2, label=f'Real Model AUC = {score:.2f}\np-value = {pvalue:.4f}')
+            plt.axvline(observed_auc, color='red', linestyle='dashed', linewidth=2, label=f'Observed AUC = {observed_auc:.2f}\np-value = {pvalue:.4f}')
             permutation_title = 'Within-Participant Permutation Test' if paired else 'Permutation Test'
-            plt.title(f'{permutation_title} at Fixed Hyperparameters')
-            plt.xlabel('Cross-Validated AUC')
-            plt.ylabel('Frequency')
+            plt.title(f'{permutation_title} with Nested Model Selection')
+            plt.xlabel('Pooled Held-Out ROC AUC')
+            plt.ylabel('Density')
             plt.legend(loc='best')
             plt.grid(True, alpha=0.3)
             pdf.savefig()

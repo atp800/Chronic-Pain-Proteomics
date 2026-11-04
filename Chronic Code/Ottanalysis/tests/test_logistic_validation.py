@@ -10,7 +10,8 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, permutation_test_score
+from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
@@ -139,10 +140,12 @@ class LogisticValidationTests(unittest.TestCase):
 
     def test_paired_permutations_swap_only_within_people_and_refit_on_whole_training_pairs(self):
         swaps = []
+        observed_aucs = []
         observed = pd.Series(self.y, index=self.X.index)
         # With only "signal" in this comparison, p3 has no measurement at its first visit.
         eligible_ids = self.participants[self.participants.ne("p3")]
         fit_features = ProteinFeatures.fit
+        permutation_test = logistic._nested_permutation_test
 
         def inspect_fit(transformer, X, y):
             labels = pd.Series(y, index=X.index)
@@ -154,22 +157,102 @@ class LogisticValidationTests(unittest.TestCase):
             swaps.append(changed.any() and not changed.all())
             return fit_features(transformer, X, y)
 
-        def run_permutations(model, X, y, **options):
-            ids = options["groups"]
+        def run_permutations(X, y, delta, ids, observed_auc):
+            observed_aucs.append(observed_auc)
             self.assertTrue(X.index.equals(eligible_ids.index))
             np.testing.assert_array_equal(ids, eligible_ids.to_numpy())
-            for train, test in options["cv"].split(X, y, ids):
-                self.assertFalse(set(ids[train]) & set(ids[test]))
             with patch.object(ProteinFeatures, "fit", inspect_fit):
-                return permutation_test_score(model, X, y, **dict(options, n_jobs=1, n_permutations=5))
+                return permutation_test(X, y, delta, ids, observed_auc, n_permutations=5)
 
         data = self.X.assign(visit=self.y)
-        with (TemporaryDirectory() as output, patch.object(logistic, "permutation_test_score", run_permutations),
+        with (TemporaryDirectory() as output, patch.object(logistic, "_nested_permutation_test", run_permutations),
+              patch.object(logistic, "roc_curve", wraps=roc_curve) as plotted_roc,
               patch.object(logistic, "_bootstrap_rows", wraps=logistic._bootstrap_rows) as bootstrap):
             logistic.run_logistic_regression(data, "visit", ["signal"], 0, 1, output, participant_ids=self.participants)
             np.testing.assert_array_equal(bootstrap.call_args.args[1], eligible_ids.to_numpy())
             self.assertTrue((Path(output) / "LogReg_1_vs_0_Plots.pdf").is_file())
+            self.assertEqual(observed_aucs, [roc_auc_score(*plotted_roc.call_args.args)])
+            self.assertIn("Nested CV permutation p-value (5 draws)", self.output.getvalue())
         self.assertTrue(any(swaps))
+
+    def test_group_and_delta_shuffles_retune_the_entire_grid_and_score_held_out_rows(self):
+        raw = self.X.assign(on_off=[2., 4, 6, 8, 10] + [np.nan] * 5)
+        baseline = pd.DataFrame(10., index=raw.index, columns=raw.columns)
+        endpoints = pd.concat({"baseline": baseline, "followup": baseline + raw}, axis=1)
+        grid = {"classifier__C": [0.05, 2.], "classifier__l1_ratio": [0.1, 1.]}
+        rng = np.random.RandomState(42)
+        assignments = [rng.permutation(self.y) for _ in range(2)]
+        real_fit = logistic._fit_tuned_model
+
+        for X, delta in [(raw, False), (endpoints, True)]:
+            with self.subTest(delta=delta), patch.object(logistic, "_PARAMETER_GRID", grid):
+                observed_probs = logistic._leave_one_out_probabilities(X, self.y, delta)
+                observed_auc = roc_auc_score(self.y, observed_probs[:, 1])
+                predictions, retained = [], []
+
+                def inspect_fit(train, labels, is_delta, ids):
+                    draw = assignments[len(predictions) // len(X)]
+                    np.testing.assert_array_equal(labels, draw[X.index.get_indexer(train.index)])
+                    pd.testing.assert_frame_equal(train, X.loc[train.index])
+                    self.assertEqual(is_delta, delta)
+                    self.assertIsNone(ids)
+                    model = real_fit(train, labels, is_delta, ids)
+                    marker = raw.loc[train.index, "on_off"].notna()
+                    keep = marker.groupby(labels).mean().ge(0.7).any()
+                    self.assertEqual("on_off" in model.named_steps["proteins"].proteins_, keep)
+                    retained.append(keep)
+                    test = X.loc[~X.index.isin(train.index)]
+                    predictions.append((test.index.item(), model.predict_proba(test)[0, 1]))
+                    return model
+
+                with (patch.object(logistic, "_fit_tuned_model", inspect_fit),
+                      patch.object(logistic, "GridSearchCV", wraps=logistic.GridSearchCV) as searches):
+                    scores, pvalue = logistic._nested_permutation_test(X, self.y, delta, None, observed_auc,
+                                                                       n_permutations=2)
+                self.assertEqual(searches.call_count, len(assignments) * len(X))
+                for call in searches.call_args_list:
+                    self.assertEqual(call.args[1], grid)
+                self.assertIn(False, retained)  # the full-data fit retains this marker under the real labels
+                expected = []
+                for i, labels in enumerate(assignments):
+                    held_out = dict(predictions[i * len(X):(i + 1) * len(X)])
+                    expected.append(roc_auc_score(labels, [held_out[row] for row in X.index]))
+                np.testing.assert_allclose(scores, expected)
+                self.assertAlmostEqual(pvalue, (1 + sum(s >= observed_auc - 1e-14 for s in expected)) / 3)
+
+    def test_repeated_paired_assignments_count_every_draw_including_ties(self):
+        y = np.array([0, 1] * 3)
+        ids = np.repeat(["a", "b", "c"], 2)
+
+        def predict(X, labels, delta, participant_ids, *, show_progress):
+            # Perfect or reversed rankings, depending on the first pair's assignment.
+            positive = labels if labels[0] == 0 else 1 - labels
+            return np.column_stack([1 - positive, positive])
+
+        with patch.object(logistic, "_leave_one_out_probabilities", side_effect=predict) as fit:
+            scores, pvalue = logistic._nested_permutation_test(self.X.iloc[:6], y, False, ids, 1.)
+        self.assertEqual(len(scores), 100)
+        self.assertEqual(set(scores), {0., 1.})
+        self.assertEqual(fit.call_count, 7)  # eight possible assignments, observed score already known
+        self.assertEqual(pvalue, (1 + np.count_nonzero(scores == 1.)) / 101)
+
+    def test_no_permutation_pvalue_when_a_shuffled_fold_has_no_eligible_proteins(self):
+        data = pd.DataFrame({"marker": [8., 9, 10, 11] + [np.nan] * 4, "group": [0] * 4 + [1] * 4})
+        with TemporaryDirectory() as output, patch.object(logistic.plt, "hist") as histogram:
+            logistic.run_logistic_regression(data, "group", ["marker"], 0, 1, output)
+            self.assertTrue((Path(output) / "LogReg_1_vs_0_Features.csv").is_file())
+            self.assertTrue((Path(output) / "LogReg_1_vs_0_Plots.pdf").is_file())
+            histogram.assert_not_called()
+        self.assertIn("Permutation result unavailable: No proteins passed", self.output.getvalue())
+        self.assertNotIn("permutation p-value", self.output.getvalue())
+
+    def test_undefined_auc_on_a_later_draw_invalidates_the_whole_permutation_test(self):
+        valid = np.full((len(self.y), 2), 0.5)
+        invalid = valid.copy()
+        invalid[2] = np.nan
+        with (patch.object(logistic, "_leave_one_out_probabilities", side_effect=[valid, invalid]),
+              self.assertRaisesRegex(ValueError, "permuted held-out AUC was undefined")):
+            logistic._nested_permutation_test(self.X, self.y, False, None, 0.5, n_permutations=2)
 
     def test_incomplete_or_ambiguous_pairs_do_not_fall_back_to_row_wise_validation(self):
         data = pd.DataFrame({"visit": ["T0", "D14"] * 4, "p": [7., 9, 6, 7, 3, np.nan, 5, 2]})

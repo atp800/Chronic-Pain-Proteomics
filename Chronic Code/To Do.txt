@@ -3,9 +3,9 @@ IDENTIFIED ISSUES ------------------------------------------
 Critical — can invalidate a result from your planned analyses
 - FIXED - #11 · Paired limma can report a change with zero complete pairs. This is the highest priority for longitudinal results. A synthetic protein measured in entirely different people at baseline and follow-up still received an adjusted p-value of approximately 9.4 × 10⁻³¹.
 - FIXED - #13 · Logistic validation leaks held-out information in all four comparisons. Protein filtering uses held-out labels, and imputation and scaling use held-out measurements. Delta imputation also happens before validation. This affects the reported AUC and accuracy even when each person contributes only one row.
+- FIXED - #14 · Longitudinal logistic regression splits visits from the same responder across training and testing. For T0 versus D14, validation must hold out whole participants, bootstrapping must resample whole pairs, and a paired permutation must respect those pairs. The baseline, D14 and delta group comparisons already have one row per person.
+- FIXED - #15 · The logistic permutation p-value omits feature selection and tuning. In all four comparisons, the test reuses choices made with the real labels. A valid test of the full procedure must repeat those choices under each permutation.
 
-- #14 · Longitudinal logistic regression splits visits from the same responder across training and testing. For T0 versus D14, validation must hold out whole participants, bootstrapping must resample whole pairs, and a paired permutation must respect those pairs. The baseline, D14 and delta group comparisons already have one row per person.
-- #15 · The logistic permutation p-value omits feature selection and tuning. In all four comparisons, the test reuses choices made with the real labels. A valid test of the full procedure must repeat those choices under each permutation.
 - #2 · Small logistic groups can produce a false significance claim. If a class has fewer than five observations, five-fold AUC can be undefined. In the reproduced eight-versus-four example, every AUC was undefined but the code still reported p = 0.0099. Whether this occurs in your runs depends on the actual class counts.
 - #16 · Logistic Significant CI flags can falsely identify proteins as significant. The intervals describe stability after preprocessing, tuning and selection. Using those flags to declare individual biomarkers significant is unsupported.
 - #12 · Hinge fallback fits ignore repeated visits. This remains relevant despite your matching IDs. Rows marked Fixed-Effects treat one person’s visits as independent, making their slope-change p-values unreliable. This issue does not affect the four limma comparisons as specified.
@@ -41,7 +41,9 @@ Interpretation and combining results — no code change inherently required
 - #25 · Define what qualifies a protein for the combined shortlist. Limma adjusts across proteins within each contrast. If significance in any comparison or fraction earns a place, account for that wider search. The four comparisons reuse participants and measurements, so overlap is not independent replication. If the claim requires a true effect exceeding 0.58 log2 units, limma’s treat tests that threshold directly.
 
 
-
+WRITE UP
+- Update methodlogy seciton of manuscript to refelct any changes
+- Easy to understand write up to explain code for Pauline
 --------------------------------------------------------------------
 
 
