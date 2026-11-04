@@ -246,6 +246,27 @@ class LogisticValidationTests(unittest.TestCase):
         self.assertIn("Permutation result unavailable: No proteins passed", self.output.getvalue())
         self.assertNotIn("permutation p-value", self.output.getvalue())
 
+    def test_eight_vs_four_uses_feasible_inner_folds_and_a_pooled_auc(self):
+        y = np.repeat([0, 1], [8, 4])
+        X = pd.DataFrame({"protein": [5., 8, 6, 9, 3, 7, 11, 4, 8, 5, 10, 6]})
+        real_search = logistic.GridSearchCV
+        folds = []
+
+        def inspect_search(*args, **kwargs):
+            folds.append(kwargs["cv"])
+            return real_search(*args, **kwargs)
+
+        with patch.object(logistic, "GridSearchCV", inspect_search):
+            probs = logistic._leave_one_out_probabilities(X, y, False)[:, 1]
+        self.assertEqual(folds, [4] * 8 + [3] * 4)
+        self.assertTrue(np.isfinite(probs).all())
+        differences = probs[y == 1, None] - probs[y == 0]
+        auc = ((differences > 0).sum() + 0.5 * (differences == 0).sum()) / 32
+        self.assertAlmostEqual(auc, roc_auc_score(y, probs))
+        scores, pvalue = logistic._nested_permutation_test(X, y, False, None, auc, n_permutations=3)
+        self.assertTrue(np.isfinite(scores).all())
+        self.assertAlmostEqual(pvalue, (1 + (scores >= auc).sum()) / 4)
+
     def test_undefined_auc_on_a_later_draw_invalidates_the_whole_permutation_test(self):
         valid = np.full((len(self.y), 2), 0.5)
         invalid = valid.copy()
