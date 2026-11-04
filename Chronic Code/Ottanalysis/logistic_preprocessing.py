@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
 
-from helpers import groupwise_missing_filter
+from helpers import IMPUTATION_SEED, IMPUTATION_SHIFT, IMPUTATION_WIDTH, groupwise_missing_filter
 
 
 class NoEligibleProteins(ValueError):
@@ -30,8 +30,9 @@ class ProteinFeatures(TransformerMixin, BaseEstimator):
             abundances = X[self.proteins_]
         # Preserve the existing zero fallback when training spread is unestimable or zero.
         sd = abundances.std().fillna(0)
-        self.fill_mean_ = (abundances.mean() - 1.8 * sd).where(sd.gt(0), 0).to_numpy(dtype=float)
-        self.fill_sd_ = (0.3 * sd).to_numpy(dtype=float)
+        mean = (abundances.mean() - IMPUTATION_SHIFT * sd).where(sd.gt(0), 0)
+        self.fill_mean_ = mean.to_numpy(dtype=float)
+        self.fill_sd_ = (IMPUTATION_WIDTH * sd).to_numpy(dtype=float)
         return self
 
     def _abundances(self, data, visit):
@@ -42,7 +43,7 @@ class ProteinFeatures(TransformerMixin, BaseEstimator):
             # a time. Other validation rows cannot change this sample's values.
             row_keys = pd.util.hash_pandas_object(data.index, index=False).to_numpy()
             for i in np.flatnonzero(missing.any(axis=1)):
-                rng = np.random.default_rng([938, visit, int(row_keys[i])])
+                rng = np.random.default_rng([IMPUTATION_SEED, visit, int(row_keys[i])])
                 draws = rng.normal(self.fill_mean_, self.fill_sd_)
                 values[i, missing[i]] = draws[missing[i]]
         return values

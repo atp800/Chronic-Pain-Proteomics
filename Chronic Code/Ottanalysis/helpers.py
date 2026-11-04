@@ -5,12 +5,15 @@ from word2number import w2n
 import re
 import warnings
 
+IMPUTATION_SHIFT = 1.8
+IMPUTATION_WIDTH = 0.3
+IMPUTATION_SEED = 938
 
 ##################################################################
 # HELPER FUCNTION: IMPUTATE MISSING VALUES
 ##################################################################
 # Probabilistic minimum imputation (down-shifted normal distribution)
-def impute_missing_vals(df, shift=1.8, width=0.3):
+def impute_missing_vals(df, shift=IMPUTATION_SHIFT, width=IMPUTATION_WIDTH):
     """
     Imputes missing values using down-shifted normal distribution    
     Assumes missing values are MNAR (abundance beyond limit of detection)
@@ -21,7 +24,7 @@ def impute_missing_vals(df, shift=1.8, width=0.3):
     """
 
     # Set a random seed for reproducibility and create df copy to avoid modifying original
-    np.random.seed(938)
+    np.random.seed(IMPUTATION_SEED)
     data = df.copy()
     
     # Iterate through each protein column
@@ -118,7 +121,7 @@ def derive_subject_ids(sample_id_list, delimiter):
 # CALCULATE DEALTAS FOR DELTA MODE
 ##################################################################
 def calculate_deltas(df, id_col, time_col, condition_col, protein_cols, id_delimiter, baseline_time, compare_time, impute=True):
-    """Return a delta table, optionally imputing abundances before subtraction."""
+    """Return one delta table. For cross-validation, use the raw endpoints from prepare_delta_comparison."""
     if impute:
         df = df.copy()
         df[protein_cols] = impute_missing_vals(df[protein_cols])

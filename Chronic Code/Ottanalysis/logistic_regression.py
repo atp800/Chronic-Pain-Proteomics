@@ -79,7 +79,7 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     if delta:
         if not delta_visits.index.equals(y.index) or not y.index.is_unique:
             raise ValueError("Delta endpoints and labels must have the same unique participant index.")
-        X = delta_visits.replace([np.inf, -np.inf], np.nan)
+        X = delta_visits.loc[:, pd.IndexSlice[:, protein_cols]].replace([np.inf, -np.inf], np.nan)
         has_visits = X["baseline"].notna().any(axis=1) & X["followup"].notna().any(axis=1)
         if not has_visits.all():
             print(f"Excluding {int((~has_visits).sum())} participants without measurements at both visits.")
@@ -128,7 +128,7 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     for i in range(n_iterations):
         X_boot, y_boot = resample(X_full_scaled, y_encoded, random_state=i, stratify=y_encoded)
         boot_model.fit(X_boot, y_boot)
-        bootstrapped_coefs.append(boot_model.coef_.ravel())
+        bootstrapped_coefs.append(boot_model.coef_.flatten())
 
     bootstrapped_coefs = np.array(bootstrapped_coefs)
     
