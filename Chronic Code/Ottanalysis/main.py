@@ -60,7 +60,7 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, rel
     """
     print(f"Running comparison: {baseline_name} vs {compare_name}")
     print(f"Rows in subset: {len(df_subset)}")
-    print(f"Paired Limma: {is_paired} | Is Delta Mode: {is_delta}")
+    print(f"Paired comparison: {is_paired} | Is Delta Mode: {is_delta}")
 
     # Run tests
     if CONFIG.get("RUN_LIMMA", False):
@@ -77,6 +77,13 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, rel
         os.makedirs(logistic_dir, exist_ok=True)
 
         logistic_data = df_subset
+        participant_ids = None
+        if is_paired:
+            sample_ids = df_subset[CONFIG["ID_COLUMN"]]
+            participant_ids = pd.Series(
+                derive_subject_ids(sample_ids, delimiter=CONFIG["ID_DELIMITER"]),
+                index=sample_ids.index, dtype=object
+            ).where(sample_ids.notna())
         if is_delta:
             if delta_visits is None:
                 raise ValueError("Delta logistic regression requires baseline and follow-up abundances.")
@@ -90,7 +97,8 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, rel
             baseline_name,
             compare_name,
             logistic_dir,
-            delta_visits=delta_visits
+            delta_visits=delta_visits,
+            participant_ids=participant_ids
         )
 
 ################################################
@@ -187,7 +195,7 @@ for current_loop_val in outer_loops:
                 baseline_name=base_val, 
                 compare_name=target_val, 
                 relative_dir=relative_dir,
-                is_paired=True,     # Longitudinal assumes paired limma
+                is_paired=True,
                 is_delta=False
             )
 

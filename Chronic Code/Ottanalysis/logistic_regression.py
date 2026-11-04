@@ -8,7 +8,7 @@ import warnings
 from sklearn.exceptions import ConvergenceWarning
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import GridSearchCV, LeaveOneOut, permutation_test_score
+from sklearn.model_selection import GridSearchCV, GroupKFold, LeaveOneGroupOut, LeaveOneOut, permutation_test_score
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import roc_curve, auc, confusion_matrix, accuracy_score, f1_score
 from sklearn.base import clone
@@ -41,7 +41,32 @@ _PARAMETER_GRID = [
 ]
 
 
-def _fit_tuned_model(X, y, delta):
+def _complete_pair_mask(X, visits, participant_ids):
+    if not participant_ids.index.equals(X.index):
+        raise ValueError("Participant IDs and measurements must have the same row index.")
+    known = participant_ids.notna() & participant_ids.astype(str).str.strip().ne("")
+    if not known.all():
+        print(f"Excluding {int((~known).sum())} rows without a participant ID.")
+    if pd.MultiIndex.from_arrays([participant_ids[known], visits[known]]).has_duplicates:
+        raise ValueError("Duplicate participant/visit. Check IDs or resolve replicate samples.")
+
+    # The caller selects two distinct visits. Require one measured sample at each.
+    observed = known & X.notna().any(axis=1)
+    counts = participant_ids[observed].value_counts()
+    complete = counts.index[counts.eq(2)]
+    incomplete = participant_ids[known].nunique() - len(complete)
+    if incomplete:
+        print(f"Excluding {incomplete} participants without measured samples at both requested visits.")
+    return observed & participant_ids.isin(complete)
+
+
+def _validation_cv(y, participant_ids):
+    if participant_ids is None:
+        return min(5, int(np.bincount(y).min()))
+    return GroupKFold(n_splits=min(5, len(np.unique(participant_ids))))
+
+
+def _fit_tuned_model(X, y, delta, participant_ids=None):
     pipeline = Pipeline([
         ("proteins", ProteinFeatures(delta=delta)),
         ("scale", StandardScaler()),
@@ -51,32 +76,50 @@ def _fit_tuned_model(X, y, delta):
     ])
     # GridSearchCV must wrap the whole pipeline so even inner validation rows
     # are excluded from selection, imputation and scaling.
-    folds = min(5, int(np.bincount(y).min()))
-    search = GridSearchCV(pipeline, _PARAMETER_GRID, cv=folds, scoring="accuracy",
+    search = GridSearchCV(pipeline, _PARAMETER_GRID, cv=_validation_cv(y, participant_ids), scoring="accuracy",
                           n_jobs=-1, error_score="raise")
-    return search.fit(X, y).best_estimator_
+    return search.fit(X, y, groups=participant_ids).best_estimator_
 
 
-def _leave_one_out_probabilities(X, y, delta):
+def _leave_one_out_probabilities(X, y, delta, participant_ids=None):
+    outer = LeaveOneOut() if participant_ids is None else LeaveOneGroupOut()
+    n_folds = outer.get_n_splits(X, y, participant_ids)
     probabilities = np.empty((len(X), 2))
-    for i, (train, test) in enumerate(LeaveOneOut().split(X), start=1):
-        filled = 40 * i // len(X)
+    for i, (train, test) in enumerate(outer.split(X, y, participant_ids), start=1):
+        filled = 40 * i // n_folds
         bar = '█' * filled + '-' * (40 - filled)
-        print(f'\rProgress: |{bar}| {100 * i // len(X)}% ({i}/{len(X)})', end='', flush=True)
-        model = _fit_tuned_model(X.iloc[train], y[train], delta)
+        print(f'\rProgress: |{bar}| {100 * i // n_folds}% ({i}/{n_folds})', end='', flush=True)
+        train_ids = None if participant_ids is None else participant_ids[train]
+        model = _fit_tuned_model(X.iloc[train], y[train], delta, train_ids)
         probabilities[test] = model.predict_proba(X.iloc[test])
     print("\nValidation Complete.\n")
     return probabilities
 
 
-def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir, *, delta_visits=None):
+def _bootstrap_rows(y, participant_ids, n_iterations):
+    if participant_ids is None:
+        units, strata = np.arange(len(y)), y
+    else:
+        # Each row of units contains both input positions for one complete pair.
+        units = np.argsort(participant_ids, kind="stable").reshape(-1, 2)
+        strata = None
+    for seed in range(n_iterations):
+        yield resample(units, replace=True, stratify=strata, random_state=seed).ravel()
+
+
+def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir,
+                            *, delta_visits=None, participant_ids=None):
+    """For longitudinal visits, pass participant IDs indexed like df_subset. Each delta row already represents one person."""
     print("\n------------------------------------------------------------------")
     print(f"Running Logistic Regression avec: {compare_name} vs {baseline_name}")
     print("------------------------------------------------------------------")
     
     y = df_subset[group_col]
     delta = delta_visits is not None
+    paired = participant_ids is not None
     if delta:
+        if paired:
+            raise ValueError("Each delta already represents one participant; paired visits apply only to longitudinal data.")
         if not delta_visits.index.equals(y.index) or not y.index.is_unique:
             raise ValueError("Delta endpoints and labels must have the same unique participant index.")
         X = delta_visits.loc[:, pd.IndexSlice[:, protein_cols]].replace([np.inf, -np.inf], np.nan)
@@ -88,26 +131,44 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     else:
         X = df_subset[protein_cols].replace([np.inf, -np.inf], np.nan)
 
+    if paired:
+        requested = {str(baseline_name), str(compare_name)}
+        if len(requested) != 2 or set(y.astype(str)) != requested:
+            print("Skipping longitudinal logistic regression: both distinct requested visits are required.")
+            return
+        try:
+            keep = _complete_pair_mask(X, y, participant_ids)
+        except ValueError as exc:
+            print(f"Skipping longitudinal logistic regression: {exc}")
+            return
+        X, y = X.loc[keep], y.loc[keep]
+        participant_ids = participant_ids.loc[keep].to_numpy()
+        n_participants = len(np.unique(participant_ids))
+        print(f"Longitudinal logistic regression: {n_participants} complete participant pairs ({len(y)} visits).")
+
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
     classes = le.classes_
     print(f"Classes: {classes}")
     if len(classes) != 2 or np.bincount(y_encoded).min() < 3:
-        print("Skipping logistic regression: nested leave-one-out validation requires at least three rows in each of two classes.")
+        minimum = "three complete pairs" if paired else "three rows in each of two classes"
+        print(f"Skipping logistic regression: nested validation requires at least {minimum}.")
         return
 
-    print("Performing leave-one-out validation with preprocessing and tuning inside each training set...")
+    unit = "participant" if paired else "sample"
+    cv_label = "Nested participant-held-out CV" if paired else "Nested CV"
+    print(f"Leaving one {unit} out at a time, with preprocessing and tuning inside each training set...")
     try:
-        probabilities = _leave_one_out_probabilities(X, y_encoded, delta)
+        probabilities = _leave_one_out_probabilities(X, y_encoded, delta, participant_ids)
         # The all-data refit supplies the reported coefficients and bootstrap feature space.
-        full_model = _fit_tuned_model(X, y_encoded, delta)
+        full_model = _fit_tuned_model(X, y_encoded, delta, participant_ids)
     except NoEligibleProteins as exc:
         print(f"\nSkipping this logistic comparison: {exc}")
         return
 
     y_pred_cv = probabilities.argmax(axis=1)
     y_probs_cv = probabilities[:, 1]
-    print("\n\n--- Model Performance (Nested CV Estimate) ---")
+    print(f"\n\n--- Model Performance ({cv_label} Estimate) ---")
     print(f"Accuracy: {accuracy_score(y_encoded, y_pred_cv):.4f}")
     print(f"F1 Score: {f1_score(y_encoded, y_pred_cv):.4f}")
     print(f"Confusion Matrix:\n{confusion_matrix(y_encoded, y_pred_cv)}\n")
@@ -120,14 +181,15 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     
 
     print("\nRunning bootstrapping for feature stability (calculating confidence intervals)")
+    if paired:
+        print("Resampling participants with both visits together.")
     n_iterations = 500
     boot_model = clone(clf).set_params(max_iter=5000)
 
     bootstrapped_coefs = []
     
-    for i in range(n_iterations):
-        X_boot, y_boot = resample(X_full_scaled, y_encoded, random_state=i, stratify=y_encoded)
-        boot_model.fit(X_boot, y_boot)
+    for rows in _bootstrap_rows(y_encoded, participant_ids, n_iterations):
+        boot_model.fit(X_full_scaled[rows], y_encoded[rows])
         bootstrapped_coefs.append(boot_model.coef_.flatten())
 
     bootstrapped_coefs = np.array(bootstrapped_coefs)
@@ -176,10 +238,14 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     # Hyperparameters remain fixed for this diagnostic; each fold and each
     # permutation refits the preprocessing using its own training labels.
     print("\nPermutation check at the final hyperparameters (tuning is not repeated)")
+    if paired:
+        print("Swapping visit labels only within participants, with participant-grouped CV.")
     valid_permutation = False
     try:
+        # groups restricts label shuffling; the CV splitter keeps each pair in one fold.
         score, permutation_scores, pvalue = permutation_test_score(
-            full_model, X, y_encoded, scoring="roc_auc", cv=min(5, int(np.bincount(y_encoded).min())),
+            full_model, X, y_encoded, scoring="roc_auc", cv=_validation_cv(y_encoded, participant_ids),
+            groups=participant_ids,
             n_permutations=100, n_jobs=-1, random_state=42
         )
         valid_permutation = np.isfinite(score) and np.isfinite(permutation_scores).all()
@@ -207,7 +273,7 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
             plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
             plt.xlabel('False Positive Rate')
             plt.ylabel('True Positive Rate')
-            plt.title(f'ROC Curve (Nested CV): {classes[1]} vs {classes[0]}')
+            plt.title(f'ROC Curve ({cv_label}): {classes[1]} vs {classes[0]}')
             plt.legend(loc="lower right")
             plt.grid(True, alpha=0.3)
             pdf.savefig()
@@ -218,7 +284,8 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
             plt.figure(figsize=(8, 6))
             plt.hist(permutation_scores, bins=20, density=True, alpha=0.7, color='gray', label='Null Dist (Permuted)')
             plt.axvline(score, color='red', linestyle='dashed', linewidth=2, label=f'Real Model AUC = {score:.2f}\np-value = {pvalue:.4f}')
-            plt.title('Permutation Test at Fixed Hyperparameters')
+            permutation_title = 'Within-Participant Permutation Test' if paired else 'Permutation Test'
+            plt.title(f'{permutation_title} at Fixed Hyperparameters')
             plt.xlabel('Cross-Validated AUC')
             plt.ylabel('Frequency')
             plt.legend(loc='best')

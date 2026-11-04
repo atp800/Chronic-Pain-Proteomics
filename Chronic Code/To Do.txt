@@ -3,6 +3,7 @@ IDENTIFIED ISSUES ------------------------------------------
 Critical — can invalidate a result from your planned analyses
 - FIXED - #11 · Paired limma can report a change with zero complete pairs. This is the highest priority for longitudinal results. A synthetic protein measured in entirely different people at baseline and follow-up still received an adjusted p-value of approximately 9.4 × 10⁻³¹.
 - FIXED - #13 · Logistic validation leaks held-out information in all four comparisons. Protein filtering uses held-out labels, and imputation and scaling use held-out measurements. Delta imputation also happens before validation. This affects the reported AUC and accuracy even when each person contributes only one row.
+
 - #14 · Longitudinal logistic regression splits visits from the same responder across training and testing. For T0 versus D14, validation must hold out whole participants, bootstrapping must resample whole pairs, and a paired permutation must respect those pairs. The baseline, D14 and delta group comparisons already have one row per person.
 - #15 · The logistic permutation p-value omits feature selection and tuning. In all four comparisons, the test reuses choices made with the real labels. A valid test of the full procedure must repeat those choices under each permutation.
 - #2 · Small logistic groups can produce a false significance claim. If a class has fewer than five observations, five-fold AUC can be undefined. In the reproduced eight-versus-four example, every AUC was undefined but the code still reported p = 0.0099. Whether this occurs in your runs depends on the actual class counts.
@@ -10,6 +11,7 @@ Critical — can invalidate a result from your planned analyses
 - #12 · Hinge fallback fits ignore repeated visits. This remains relevant despite your matching IDs. Rows marked Fixed-Effects treat one person’s visits as independent, making their slope-change p-values unreliable. This issue does not affect the four limma comparisons as specified.
 - #17 · Hinge imputation can manufacture a trajectory. Complete attendance does not guarantee complete measurements for each protein. If a participant has only one observed abundance for a protein, the code fills their other visits with zero and fits the resulting trajectory as observed data.
 - #19 · Hinge significance does not account for the search across days and proteins. Choosing the lowest-AIC day and reporting its ordinary p-value overstates evidence for a bend. Prespecifying D14 as the sole candidate removes the day-search problem. Testing many proteins still requires multiple-testing control.
+
 Important — improves validity or confidence in these results
 - #3 · Logistic coefficient direction can contradict the comparison name. With your example labels T0 and D14, positive coefficients predict T0. With NonResp and Resp, they predict Resp. The same positive-class choice determines F1.
 - #6 · The GUI can clear covariate and ignored-column selections. If your workbook contains numeric metadata beyond the designated ID, group and time columns, a cleared selection can turn metadata into apparent proteins or remove intended adjustment.
@@ -17,10 +19,12 @@ Important — improves validity or confidence in these results
 - #24 · Report the support behind each protein. Export observed participants per group, complete pairs, imputed proportions, residual degrees of freedom and effect confidence intervals. The limma eligibility fix now enforces minimum replication, but the workbook does not show those counts.
 - #26 · Check the stability of the final shortlist. Check whether leading proteins survive plausible missing-data treatments and omission of influential participants. For logistic regression, also check convergence because the code suppresses convergence warnings.
 - #10 · Old outputs can appear current after a skipped run. This matters particularly when rerunning limma after the eligibility fix. If an entire comparison is skipped, its previous workbook can remain visible.
+
 Extra — presentation and workflow
 - #5 · GUI control flow is awkward. Hinge-only runs still require unrelated comparison selections, and closing the window can allow the main script to continue.
 - #9 · Plots can disagree with their tables. The volcano plot uses a fixed 0.05 line, and the logistic coefficient plot can misdraw an interval endpoint. The underlying tables retain the calculated values.
 - #7 · Unused settings and placeholder features. The protein-column, log2 and normalisation settings have no effect, and the PCA and Spearman switches run no analysis. These are low priority if your inputs are already prepared and protein columns are correctly identified.
+
 Relevant to other datasets or analysis settings
 - #1 · Headless delta mode without a follow-up. Raw abundances can be reported as deltas if the GUI is disabled and no follow-up is specified. Your explicit T0-to-D14 selection avoids this path.
 - #4 · Numeric visit labels can break delta lookup. This affects Excel visits stored as numbers such as 0 and 14. Your text labels T0 and D14 avoid it. The earlier limma contrast-name problem was removed by the direct-fit change.
@@ -28,6 +32,7 @@ Relevant to other datasets or analysis settings
 - #12 · Pooled group limma ignores participant identity. This applies if you leave the visit selection blank and combine all visits. Your separate baseline and D14 comparisons avoid it.
 - #18 · An entirely absent visit can become an invented logistic delta. This requires a missing baseline or follow-up sample row. With both rows present for every participant, this specific failure does not apply. Individual missing protein values can still be imputed before subtraction.
 - #21 · Delta mode takes covariates from the first source row. This matters if you select a covariate that changes between visits, such as assay batch. It is immaterial for covariates that are constant within each participant.
+
 Interpretation and combining results — no code change inherently required
 - The four comparisons answer different questions. Baseline identifies pre-induction differences. D14 identifies differences present at follow-up, including ones already present at baseline. The responder-only longitudinal comparison identifies change within responders. The between-group delta comparison directly tests whether responders changed differently from nonresponders.
 - Longitudinal logistic regression predicts visit within responders. Its AUC measures how well proteins distinguish T0 from D14 among responders. The baseline logistic comparison is the one that evaluates whether pre-induction measurements distinguish eventual responders from nonresponders.
@@ -37,7 +42,7 @@ Interpretation and combining results — no code change inherently required
 
 
 
-
+--------------------------------------------------------------------
 
 
 Datasets and Precprocssing

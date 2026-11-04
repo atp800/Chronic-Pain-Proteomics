@@ -10,8 +10,10 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, permutation_test_score
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils import resample
 
 import logistic_regression as logistic
 from config import CONFIG
@@ -39,6 +41,9 @@ class LogisticValidationTests(unittest.TestCase):
             "borderline_coverage": [1, 2, 3] + [np.nan] * 7,
             "one_outlier": [0] * 9 + [100],
         }, index=list("abcdefghij"))
+        # Each participant has one row of each class, in different orders at the two visits.
+        self.participants = pd.Series(["p3", "p1", "p5", "p2", "p4", "p4", "p5", "p1", "p3", "p2"],
+                                      index=self.X.index)
 
     def test_each_inner_fit_selects_imputes_and_scales_its_own_training_rows(self):
         fits, scaler_inputs = [], []
@@ -84,6 +89,103 @@ class LogisticValidationTests(unittest.TestCase):
         changed_labels[0] = 1
         after = logistic._leave_one_out_probabilities(X, changed_labels, delta=False)
         np.testing.assert_array_equal(before[0], after[0])
+
+    def test_longitudinal_outer_predictions_and_inner_fits_hold_out_whole_participants(self):
+        training_sets, predicted = [], []
+        expected_probabilities = pd.DataFrame(index=self.X.index, columns=[0, 1], dtype=float)
+        fit_features, predict = ProteinFeatures.fit, Pipeline.predict_proba
+
+        def inspect_fit(transformer, X, y):
+            ids = self.participants.loc[X.index]
+            self.assertTrue(ids.value_counts().eq(2).all())
+            training_sets.append(set(ids))
+            return fit_features(transformer, X, y)
+
+        def inspect_prediction(model, X):
+            held_out = self.participants.loc[X.index]
+            self.assertEqual(len(held_out), 2)
+            self.assertEqual(held_out.nunique(), 1)
+            remaining = set(self.participants) - set(held_out)
+            self.assertTrue(all(inner <= remaining for inner in training_sets))
+            self.assertEqual(training_sets[-1], remaining)  # refit on the outer training set
+            self.assertCountEqual([remaining - inner for inner in training_sets[:-1]],
+                                  [{participant} for participant in remaining])
+            training_sets.clear()
+            predicted.extend(X.index)
+            result = predict(model, X)
+            expected_probabilities.loc[X.index] = result
+            return result
+
+        with patch.object(ProteinFeatures, "fit", inspect_fit), patch.object(Pipeline, "predict_proba", inspect_prediction):
+            probabilities = logistic._leave_one_out_probabilities(self.X, self.y, False, self.participants.to_numpy())
+        self.assertCountEqual(predicted, self.X.index)
+        np.testing.assert_allclose(probabilities, expected_probabilities)
+
+    def test_bootstrap_draws_whole_pairs_and_preserves_independent_resampling(self):
+        ids = self.participants.to_numpy()
+        repeated = False
+        for rows in logistic._bootstrap_rows(self.y, ids, 12):
+            self.assertEqual(len(rows), len(ids))
+            counts = np.bincount(rows, minlength=len(ids))
+            for participant in np.unique(ids):
+                first, second = counts[ids == participant]
+                self.assertEqual(first, second)
+            repeated |= counts.max() > 1
+        self.assertTrue(repeated)
+
+        for seed, rows in enumerate(logistic._bootstrap_rows(self.y, None, 3)):
+            expected = resample(np.arange(len(self.y)), stratify=self.y, random_state=seed)
+            np.testing.assert_array_equal(rows, expected)
+
+    def test_paired_permutations_swap_only_within_people_and_refit_on_whole_training_pairs(self):
+        swaps = []
+        observed = pd.Series(self.y, index=self.X.index)
+        # With only "signal" in this comparison, p3 has no measurement at its first visit.
+        eligible_ids = self.participants[self.participants.ne("p3")]
+        fit_features = ProteinFeatures.fit
+
+        def inspect_fit(transformer, X, y):
+            labels = pd.Series(y, index=X.index)
+            ids = self.participants.loc[X.index]
+            for _, pair in labels.groupby(ids):
+                self.assertCountEqual(pair, [0, 1])
+            changed = labels.ne(observed.loc[X.index])
+            self.assertTrue(changed.groupby(ids).nunique().eq(1).all())
+            swaps.append(changed.any() and not changed.all())
+            return fit_features(transformer, X, y)
+
+        def run_permutations(model, X, y, **options):
+            ids = options["groups"]
+            self.assertTrue(X.index.equals(eligible_ids.index))
+            np.testing.assert_array_equal(ids, eligible_ids.to_numpy())
+            for train, test in options["cv"].split(X, y, ids):
+                self.assertFalse(set(ids[train]) & set(ids[test]))
+            with patch.object(ProteinFeatures, "fit", inspect_fit):
+                return permutation_test_score(model, X, y, **dict(options, n_jobs=1, n_permutations=5))
+
+        data = self.X.assign(visit=self.y)
+        with (TemporaryDirectory() as output, patch.object(logistic, "permutation_test_score", run_permutations),
+              patch.object(logistic, "_bootstrap_rows", wraps=logistic._bootstrap_rows) as bootstrap):
+            logistic.run_logistic_regression(data, "visit", ["signal"], 0, 1, output, participant_ids=self.participants)
+            np.testing.assert_array_equal(bootstrap.call_args.args[1], eligible_ids.to_numpy())
+            self.assertTrue((Path(output) / "LogReg_1_vs_0_Plots.pdf").is_file())
+        self.assertTrue(any(swaps))
+
+    def test_incomplete_or_ambiguous_pairs_do_not_fall_back_to_row_wise_validation(self):
+        data = pd.DataFrame({"visit": ["T0", "D14"] * 4, "p": [7., 9, 6, 7, 3, np.nan, 5, 2]})
+        ids = pd.Series(["a", "a", "b", "b", "c", "c", "d", None])
+        keep = logistic._complete_pair_mask(data[["p"]], data.visit, ids)
+        self.assertEqual(ids[keep].tolist(), ["a", "a", "b", "b"])
+        with TemporaryDirectory() as output:
+            logistic.run_logistic_regression(data, "visit", ["p"], "T0", "D14", output, participant_ids=ids)
+            self.assertIn("at least three complete pairs", self.output.getvalue())
+            ids.iloc[6] = "a"  # duplicate a's T0
+            logistic.run_logistic_regression(data, "visit", ["p"], "T0", "D14", output, participant_ids=ids)
+            self.assertIn("Duplicate participant/visit", self.output.getvalue())
+            unmatched = pd.Series(list("abcdefgh"), index=data.index)
+            logistic.run_logistic_regression(data, "visit", ["p"], "T0", "D14", output, participant_ids=unmatched)
+            self.assertIn("0 complete participant pairs", self.output.getvalue())
+            self.assertEqual(list(Path(output).iterdir()), [])
 
     def test_delta_fits_on_raw_training_endpoints_and_preserves_subject_pairs(self):
         rows = []
@@ -139,11 +241,40 @@ class LogisticValidationTests(unittest.TestCase):
         self.assertTrue(np.isnan(observed.at["b", "p"]))
         labels = classifier.call_args.args[0]
         raw = classifier.call_args.kwargs["delta_visits"]
+        self.assertIsNone(classifier.call_args.kwargs["participant_ids"])
         self.assertEqual(classifier.call_args.args[2], ["p"])
         self.assertEqual(labels.index.tolist(), ["a", "b"])
         self.assertTrue(raw.index.equals(labels.index))
         np.testing.assert_allclose(raw["baseline"]["p"], [9., np.nan])
         np.testing.assert_allclose(raw["followup"]["p"], [13., 15.])
+
+    def test_main_only_passes_participant_ids_for_longitudinal_comparisons(self):
+        data = pd.DataFrame({
+            "Sample_ID": ["b|D14", "a|D3", "c|T0", "a|T0", "b|T0", "a|D14", "c|D14"],
+            "Time_Point": ["D14", "D3", "T0", "T0", "T0", "D14", "D14"],
+            "Condition": ["Resp", "Resp", "NonResp", "Resp", "Resp", "Resp", "NonResp"],
+            "p": np.arange(7.),
+        }, index=[18, 2, 35, 7, 41, 5, 11])
+        common = dict(LAUNCH_GUI=False, ID_DELIMITER="|", ID_COLUMN="Sample_ID", CONDITION_COLUMN="Condition",
+                      TIME_COLUMN="Time_Point", COVARIATE_COLUMNS=[], UNNEEDED_COLUMNS=[],
+                      RUN_LIMMA=False, RUN_LOGISTIC_REGRESSION=True, RUN_HINGE=False)
+        cases = [("LONGITUDINAL", ["Resp"], "T0", ["D14"]), ("GROUP_COMPARISON", ["T0", "D14"], "NonResp", ["Resp"])]
+        for mode, loops, base, targets in cases:
+            with (self.subTest(mode=mode), patch.dict(CONFIG, common, ANALYSIS_MODE=mode, BASELINE_VAL=base,
+                                                       COMPARE_VALS=targets, LOOP_VALS=loops),
+                  patch.dict(sys.modules, {"limma": SimpleNamespace(run_limma=Mock())}),
+                  patch("pandas.read_excel", return_value=data), patch("os.makedirs"),
+                  patch.object(logistic, "run_logistic_regression") as classifier):
+                runpy.run_path(str(Path(__file__).resolve().parents[1] / "main.py"))
+                self.assertEqual(classifier.call_count, len(loops))
+                for call in classifier.call_args_list:
+                    ids = call.kwargs["participant_ids"]
+                    self.assertEqual(call.args[2], ["p"])
+                    if mode == "LONGITUDINAL":
+                        self.assertTrue(ids.index.equals(call.args[0].index))
+                        self.assertEqual(ids.to_dict(), {18: "b", 7: "a", 41: "b", 5: "a"})
+                    else:
+                        self.assertIsNone(ids)
 
     def test_fold_without_eligible_proteins_does_not_produce_a_performance_score(self):
         data = pd.DataFrame({"constant": [3.] * 10, "group": self.y})
