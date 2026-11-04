@@ -1,6 +1,39 @@
 
-Goals, updates
-- main update is now have all th data?? and befor it was being double normalised
+IDENTIFIED ISSUES ------------------------------------------
+Critical — the affected result can be invalid even when the code runs
+- #11 · Paired limma can report a change with zero complete pairs. This is the highest priority for longitudinal results. A synthetic protein measured in entirely different people at baseline and follow-up still received an adjusted p-value of approximately 9.4 × 10⁻³¹.
+- #12 · Repeated visits can be treated as independent. This affects pooled group limma, paired limma when participant IDs fail to match, and hinge fits that fall back to ordinary regression. Their p-values can be unreliable. A single-visit comparison with one sample per person avoids this issue.
+- #13 · Logistic validation leaks held-out information. Protein filtering uses held-out labels, and imputation and scaling use held-out measurements. The reported cross-validated AUC and accuracy are unreliable estimates of performance on new people.
+- #14 · Logistic resampling can split the same person across training and testing. This affects analyses with multiple rows per participant. Validation, bootstrapping and permutation must preserve the relevant participant structure.
+- #15 · The logistic permutation p-value omits model selection. Features and tuning parameters selected using the real labels remain fixed during permutation. The resulting p-value cannot establish significance for the full modelling procedure.
+- #2 · Small groups can produce a false claim of model significance. With eight versus four synthetic samples, the five-fold permutation test returned undefined AUCs but still reported p = 0.0099.
+- #16 · Logistic Significant CI flags cannot establish biomarker significance. The bootstrap intervals are conditional on earlier selection and tuning and do not control false discoveries. Selection frequency remains useful as a descriptive stability measure.
+- #17 · Hinge imputation can manufacture a trajectory. A single observed log2 abundance of 24 and two missing visits can become 24, 0, 0. The model then treats the artificial drop as measured evidence.
+- #18 · Delta logistic regression can invent an entire participant’s change profile. A person missing baseline or follow-up can receive imputed changes for every retained protein. This issue affects logistic regression. Delta limma preserves those missing values.
+- #19 · Hinge significance ignores the search over days and proteins. Selecting the best hinge day and reporting its ordinary p-value can overstate evidence for a bend. Screening many proteins at a nominal cutoff compounds the problem.
+- #22 · Hinge overlap cannot establish a responder–nonresponder difference. The overlap is valid as a descriptive list, even when the groups change in opposite directions. For your biological question, use non-imputed delta limma at a prespecified follow-up, or test a response-group × visit interaction across visits.
+- #1 · Non-GUI delta mode can test raw abundances as changes. Critical only if you run without the GUI and omit the follow-up visit. In that case, limma can write a DELTA result without performing subtraction.
+Important — improves validity, interpretation or confidence in the results
+- #3 · Logistic coefficient direction can be read backwards. The fitted model uses alphabetical class order. For D7_vs_T0, positive coefficients predict T0. Explicitly recording the positive class would prevent reversed biological interpretations.
+- #6 · The GUI can clear covariate and ignored-column selections. Submitting without reselecting them can omit intended adjustment or include numeric metadata in the protein analysis. This matters even with valid column names.
+- #21 · Covariate handling depends on the analysis. Only limma uses the selected covariates. Paired participant effects absorb time-invariant covariates, and delta mode takes the first row’s value for each person, which can misrepresent time-varying factors.
+- #23 · Missing measurements can affect limma standard errors. In paired or covariate-adjusted designs with missing values, fitting the target contrast directly gives exact standard errors. In one synthetic paired example, the current calculation gave about half the direct-fit value.
+- #20 · Mixed-model and OLS AIC values are inconsistent. When different candidate hinge days use different model types, the parameter-count convention gives OLS a two-point advantage. That can change which day wins a close comparison.
+- #25 · False-discovery control should match how you choose biomarkers. Limma already adjusts across proteins within each contrast. If a hit on any day or in any fraction qualifies for one shortlist, account for that wider search. Use treat if the claim specifically requires an effect exceeding 0.58 log2 units.
+- #24 · Report the evidence supporting each protein. Observed participants per group, complete pairs, imputed proportions, residual degrees of freedom and effect confidence intervals would make weakly supported hits easier to identify.
+- #26 · Check the stability of leading hits. Test whether conclusions survive plausible missing-data treatments and omission of influential participants. Inspect the abundance–variance relationship and fit diagnostics, including logistic convergence, before relying on a shortlist.
+- #10 · Failed reruns can leave old results visible. The current hinge comparison avoids reading stale inputs, but an earlier workbook or plot can still be mistaken for the latest result.
+Extra — compatibility, presentation or unused functionality
+- #4 · Numeric or unusual labels can break comparisons. This includes numeric Excel visit labels and group names that collapse to the same R name after cleaning. Low priority with your working files.
+- #5 · GUI control flow is awkward. Hinge-only runs require unrelated baseline and comparison selections, and closing the window does not cancel the main script.
+- #7 · Several configuration options are unused. PROTEIN_COLUMNS, ALREADY_LOG2, ALREADY_NORMALISED, PCA and Spearman settings have no effect. Low priority while your inputs are already prepared and you do not rely on those switches.
+- #8 · R startup and rpy2 compatibility are fragile. R is required even for non-limma runs, and the conversion call fails under rpy2 3.6. This is a portability issue in your currently working environment.
+- #9 · Two plot details can mislead. The volcano plot always marks 0.05, and logistic error bars can misdraw a percentile endpoint. The underlying result tables are unaffected.
+
+
+
+
+
 
 Datasets and Precprocssing
 - Pauline/marie: normailisation, log2 transformation, outlier removal, missing value handling
@@ -101,11 +134,6 @@ Don't give warnings about limma or logistic settings if boxes to run aren't tick
 
 Hinge model should grey out or give a warning when less than three timepoints exist (check necessary minimum)
 
-
-check hinge model plot is just two straight lines either side of a hinge
-check it's being calculated properly
-
-Updgrade hinge model to be able to specify number of turning points and candidates for each (make sure internal code ensures second/third turning points are after previous ones)
 
 Add multithreading
 

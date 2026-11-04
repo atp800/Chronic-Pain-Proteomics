@@ -1,6 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 import pandas as pd
 import glob
 from matplotlib.backends.backend_pdf import PdfPages
@@ -91,29 +92,48 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
 
 
     ######### PREPARE DATA ###########
-    X_limma = df_subset[protein_cols].copy()
+    subjects = None
+    if is_paired:
+        sample_ids = df_subset[config["ID_COLUMN"]]
+        subjects = pd.Series(
+            derive_subject_ids(sample_ids, delimiter=config["ID_DELIMITER"]),
+            index=df_subset.index, dtype=object
+        )
+        known = sample_ids.notna() & subjects.str.strip().ne("")
+        if not known.all():
+            print(f"Excluding {int((~known).sum())} rows without a participant ID.")
+            df_subset = df_subset.loc[known]
+            subjects = subjects.loc[known]
 
-    # Calculate variance using observed measurements only.
-    print("Removing proteins with insufficient observations or zero variance")      # Less than two measurements or no observed variation
+    groups = df_subset[group_col].astype(str)
+    baseline, comparison = str(baseline_name), str(compare_name)
+    if baseline == comparison or set(groups) != {baseline, comparison}:
+        print("Skipping limma: both distinct levels of the requested comparison are required.")
+        return
 
-    observed_counts = X_limma.count(axis=0)
-    observed_variances = X_limma.var(
-        axis=0,
-        skipna=True,
-        ddof=0
+    X_limma = df_subset[protein_cols].replace([np.inf, -np.inf], np.nan)
+    if is_paired:
+        if pd.MultiIndex.from_arrays([subjects, groups]).has_duplicates:
+            print("Skipping paired limma: duplicate participant/visit. Check IDs or resolve replicate samples.")
+            return
+        # With one row per visit, two observations mean this person has both
+        # measurements for this protein. Mask singletons before fitting.
+        complete = X_limma.groupby(subjects).count().eq(2)
+        replicated = complete.sum().ge(2)
+        X_limma = X_limma.where(complete.loc[subjects].set_axis(X_limma.index))
+        requirement = "two complete participant pairs"
+    else:
+        replicated = X_limma.groupby(groups).count().ge(2).all()
+        requirement = "two observations in each group"
+
+    keep = replicated & X_limma.var(ddof=0).gt(0)
+    X_limma = X_limma.loc[:, keep]
+    print(
+        f"Retained {X_limma.shape[1]}/{len(protein_cols)} proteins "
+        f"with at least {requirement} and observed variation."
     )
-
-    keep = (
-        (observed_counts >= 2)
-        & (observed_variances > 0)
-    )
-
-    X_limma = X_limma.loc[:, keep].copy()
-
-    print(f"Proteins retained for limma: {X_limma.shape[1]}")
-
     if X_limma.empty:
-        print("Skipping limma: no proteins remain after filtering.")
+        print("Skipping limma: no eligible proteins. No new limma results were written.")
         return
 
     print(
@@ -133,42 +153,18 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
         print("Limma results will be invalid unless you Log2 transform.")
 ########################################
 
-    # Need to transpose: Rows = Proteins, Columns = Samples
-    r_expression_matrix = X_limma.T
-
-    # Prep groups
-    clean_groups =[str(g).replace(" ", "_").replace("-", "_") for g in df_subset[group_col]]
-    r_groups = ro.StrVector(clean_groups)
-    
-    # Prepare IDs
-    raw_sample_ids = df_subset[config["ID_COLUMN"]].tolist()
-
+    # Rows in R are proteins. Design vectors follow the same sample order.
+    ro.globalenv['expression_data'] = X_limma.T
+    # Carry IDs as limma annotations: lmFit can drop row names for a single protein.
+    ro.globalenv['protein_names'] = ro.StrVector(X_limma.columns.astype(str).tolist())
+    ro.globalenv['comparison'] = ro.IntVector(groups.eq(comparison).astype(int).tolist())
+    formula_terms = ["1"]
     if is_paired:
-        derived_subjects = derive_subject_ids(raw_sample_ids, delimiter=config["ID_DELIMITER"])
-        r_subjects = ro.StrVector(derived_subjects)
-    else:
-        r_subjects = ro.StrVector(raw_sample_ids)
-
-
-    # ######### CREATE DESIGN MATRIX XXXXXXXXXXXX
-    ro.globalenv['expression_data'] = r_expression_matrix
-    ro.globalenv['groups'] = r_groups
-    ro.globalenv['subjects'] = r_subjects
-    ro.r('groups <- as.factor(groups)')
-
-    # Building formula dynamically
-    formula_terms = ["0", "groups"]
-
-    if is_paired:
-        if len(set(derived_subjects)) == len(derived_subjects):                     
-             print("CRITICAL WARNING: Derived Subject IDs are all unique.")
-             print("Limma cannot pair samples if every ID is different.")
-        else:
-            ro.r('subjects <- as.factor(subjects)')                                 
-            formula_terms.append("subjects")
-            if config.get("COVARIATE_COLUMNS"):
-                print("\nNOTE: Using covariates in a PAIRED design.")
-                print("Subject-level covariates (e.g., Sex) may be automatically dropped by Limma due to collinearity with Subject IDs. This is normal.\n")
+        ro.globalenv['subjects'] = ro.StrVector(subjects.tolist())
+        ro.r('subjects <- as.factor(subjects)')
+        formula_terms.append("subjects")
+        if config.get("COVARIATE_COLUMNS"):
+            print("Participant-constant covariates cannot be estimated separately from participant effects.")
 
     # Add covariates
     covariates = config.get("COVARIATE_COLUMNS", [])
@@ -191,82 +187,42 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
             
         formula_terms.append(clean_cov_name)
 
-    # Create final design matrix
+    # Enter the target effect after all nuisance terms: lmFit then marks it
+    # non-estimable if the observed participant/covariate columns explain it.
+    formula_terms.append("comparison")
     formula_str = " + ".join(formula_terms)
     print(f"Creating Design Matrix (~ {formula_str})...")
     ro.r(f'design <- model.matrix(~ {formula_str})')
-        
+    compare_string = f"{comparison} - {baseline}"
+    n_testable = int(ro.r("""
+        fit <- lmFit(as.matrix(expression_data), design)
+        fit$genes <- data.frame(Protein=protein_names)
+        testable <- fit$df.residual > 0 & is.finite(fit$coefficients[, "comparison"])
+        sum(testable)
+    """)[0])
+    print(
+        f"Testable proteins for {compare_string}: {n_testable}/{X_limma.shape[1]} "
+        "(estimable effect and positive residual degrees of freedom)."
+    )
+    if n_testable == 0:
+        print("Skipping limma: no testable proteins. No new limma results were written.")
+        return
 
-
-
-    # 1. Clean the baseline and compare strings for the contrast equation
-    clean_base = str(baseline_name).replace(" ", "_").replace("-", "_")
-    clean_compare = str(compare_name).replace(" ", "_").replace("-", "_")
-    
-    # 2. Get column names directly from the R object 'design'
-    col_names = list(ro.r('colnames(design)'))
-    
-    # Create unique clean groups (Assumes 'clean_groups' list is defined earlier in your script)
-    unique_groups_clean = sorted(list(set(clean_groups)))
-    new_col_names =[]
-
-    # 3. Column renaming
-    for c in col_names:
-        found_match = False
-        for g in unique_groups_clean:
-            # Check if the column is exactly "groups" + the group name - prevents substring errors (e.g. "Resp" matching inside "groupsNon_Resp")
-            expected_col_name = f"groups{g}"
-            if c == expected_col_name:
-                new_col_names.append(g)
-                found_match = True
-                break
-        if not found_match:
-            new_col_names.append(c)
-            
-    # Assign new names back to the R object 'design'
-    ro.globalenv['new_cols'] = ro.StrVector(new_col_names)
-    ro.r('colnames(design) <- new_cols')
-
-    # 4. Fit Linear Model
-    ro.r('expression_data <- as.matrix(expression_data)')
-    ro.r('fit <- lmFit(expression_data, design)')
-    
-    # 5. Define contrasts explicitly using baseline and compare names
-    compare_string = f"{clean_compare} - {clean_base}"
-    print(f"Defining Contrast: {compare_string}")
-    
-    ro.r(f'contrast.matrix <- makeContrasts("{compare_string}", levels=design)')
-    ro.r('fit2 <- contrasts.fit(fit, contrast.matrix)')
-    ro.r('fit2 <- eBayes(fit2)')
-    
-    # 6. Extract results back to Python/Pandas
-    r_results = ro.r('topTable(fit2, number=Inf, sort.by="P")')
+    ro.r('fit <- eBayes(fit[testable, ])')
+    r_results = ro.r('topTable(fit, coef="comparison", number=Inf, sort.by="P")')
     with localconverter(ro.default_converter + pandas2ri.converter):
         df_results = ro.conversion.rpy2py(r_results)
     
-    df_results.index.name = "Protein"
-    df_results.reset_index(inplace=True)
-
-    
-    # 7. Extract any covariate results
+    # Extract any covariate results from the same set of tested proteins.
     cov_results_dict = {}
     
     # Get any columns in the design matrix that start with "cov_"
     cov_cols = list(ro.r('grep("^cov_", colnames(design), value=TRUE)'))
     
-    if cov_cols:
-        # Run eBayes on the base fit (which contains the covariate coefficients)
-        ro.r('fit_cov <- eBayes(fit)')
-        
-        for c_col in cov_cols:
-            # Extract the topTable specifically for this covariate
-            r_cov_res = ro.r(f'topTable(fit_cov, coef="{c_col}", number=Inf, sort.by="P")')
-            with localconverter(ro.default_converter + pandas2ri.converter):
-                df_cov = ro.conversion.rpy2py(r_cov_res)
-            
-            df_cov.index.name = "Protein"
-            df_cov.reset_index(inplace=True)
-            cov_results_dict[c_col] = df_cov
+    for c_col in cov_cols:
+        r_cov_res = ro.r(f'topTable(fit, coef="{c_col}", number=Inf, sort.by="P")')
+        with localconverter(ro.default_converter + pandas2ri.converter):
+            cov_results_dict[c_col] = ro.conversion.rpy2py(r_cov_res)
 
 
     # Output generation
