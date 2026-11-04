@@ -63,7 +63,7 @@ def impute_missing_vals(df, shift=1.8, width=0.3):
 # HELPER FUNCTION: GROUP-WISE MISSING VALUE FILTERING
 ##################################################################
 # FIlters missing values but retains if only missing in one group
-def groupwise_missing_filter(df_proteins, series_groups, threshold=0.7):
+def groupwise_missing_filter(df_proteins, series_groups, threshold=0.7, *, verbose=True):
     """
     Keeps proteins that are present in at least 'threshold' (e.g., 0.7 = 70%)
     of samples in AT LEAST ONE experimental group
@@ -72,32 +72,11 @@ def groupwise_missing_filter(df_proteins, series_groups, threshold=0.7):
     """
 
 
-    print(f"Applying Group-Based Missingness Filter (Threshold: {threshold:.0%})")
-    initial_count = df_proteins.shape[1]
-    
-    unique_groups = series_groups.unique()
-    proteins_to_keep = []
-
-    for protein in df_proteins.columns:
-        keep_this_protein = False
-        for group in unique_groups:
-            # Get values for this specific group
-            group_vals = df_proteins.loc[series_groups == group, protein]
-            
-            # Calculate valid ratio (count() excludes NaNs)
-            if len(group_vals) > 0:
-                valid_ratio = group_vals.count() / len(group_vals)
-                if valid_ratio >= threshold:
-                    keep_this_protein = True
-                    break # Found a group where it's valid, so we keep it
-
-        if keep_this_protein:
-            proteins_to_keep.append(protein)
-
-    filtered_df = df_proteins[proteins_to_keep]
-    dropped_count = initial_count - filtered_df.shape[1]
-    print(f"Dropped {dropped_count} proteins. Remaining: {filtered_df.shape[1]}")
-    
+    coverage = df_proteins.notna().groupby(series_groups, sort=False).mean()
+    keep = coverage.ge(threshold).any(axis=0)
+    filtered_df = df_proteins.loc[:, keep]
+    if verbose:
+        print(f"Group-based missingness filter ({threshold:.0%}): retained {keep.sum()}/{len(keep)} proteins.")
     return filtered_df
 
 
@@ -139,10 +118,18 @@ def derive_subject_ids(sample_id_list, delimiter):
 # CALCULATE DEALTAS FOR DELTA MODE
 ##################################################################
 def calculate_deltas(df, id_col, time_col, condition_col, protein_cols, id_delimiter, baseline_time, compare_time, impute=True):
-    '''
-    If selected in GUI, ENTIRE dataset is converted to difference scores based on selected DELTA_COLUMN
-    All subsequent tests (Limma, LogReg etc.) will run on the change values
-    '''
+    """Return a delta table, optionally imputing abundances before subtraction."""
+    if impute:
+        df = df.copy()
+        df[protein_cols] = impute_missing_vals(df[protein_cols])
+    deltas, _ = prepare_delta_comparison(
+        df, id_col, time_col, condition_col, protein_cols, id_delimiter, baseline_time, compare_time
+    )
+    return deltas
+
+
+def prepare_delta_comparison(df, id_col, time_col, condition_col, protein_cols, id_delimiter, baseline_time, compare_time):
+    """Align subjects once; return observed changes and their two original abundance matrices."""
     
     print("\n" + "="*65)
     print(f"TRANSFORMING DATA: Calculating Deltas ({compare_time} - {baseline_time})")
@@ -151,11 +138,6 @@ def calculate_deltas(df, id_col, time_col, condition_col, protein_cols, id_delim
     subjects = derive_subject_ids(df[id_col].tolist(), delimiter=id_delimiter)
     
     df_work = df.copy()
-
-    if impute:
-        df_work[protein_cols] = impute_missing_vals(
-            df_work[protein_cols]
-        )
 
     df_work['Temp_Subject_ID'] = subjects
 
@@ -190,7 +172,7 @@ def calculate_deltas(df, id_col, time_col, condition_col, protein_cols, id_delim
         df_delta[id_col] = df_delta.index
         df_delta.reset_index(drop=True, inplace=True)
         
-        return df_delta
+        return df_delta, {"baseline": vals_start, "followup": vals_end}
 
     except Exception as e:
         print(f"Error during delta calculation: {e}")

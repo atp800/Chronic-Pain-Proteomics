@@ -4,7 +4,7 @@ import pandas as pd
 from config import CONFIG
 from gui import run_gui
 
-from helpers import calculate_deltas, derive_subject_ids
+from helpers import prepare_delta_comparison, derive_subject_ids
 from limma import run_limma
 from logistic_regression import run_logistic_regression
 from hinge_model import run_hinge_model
@@ -54,7 +54,7 @@ protein_cols =[c for c in df_main.columns if c not in exclude_cols]
 #################################################
 # ANALYSES CALL FUNCTION
 #################################################
-def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, relative_dir, is_paired, is_delta, df_subset_imputed=None):
+def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, relative_dir, is_paired, is_delta, delta_visits=None):
     """
     This function expects a dataframe with EXACTLY 2 conditions or groups
     """
@@ -76,14 +76,12 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, rel
         )
         os.makedirs(logistic_dir, exist_ok=True)
 
-        logistic_data = (
-            df_subset_imputed if is_delta else df_subset
-        )
-
-        if logistic_data is None:
-            raise ValueError(
-                "Delta logistic regression requires the imputed delta dataset"
-            )
+        logistic_data = df_subset
+        if is_delta:
+            if delta_visits is None:
+                raise ValueError("Delta logistic regression requires baseline and follow-up abundances.")
+            logistic_data = df_subset.set_index(CONFIG["ID_COLUMN"], verify_integrity=True)
+            delta_visits = delta_visits.loc[logistic_data.index]
 
         run_logistic_regression(
             logistic_data,
@@ -91,7 +89,8 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, rel
             protein_cols,
             baseline_name,
             compare_name,
-            logistic_dir
+            logistic_dir,
+            delta_visits=delta_visits
         )
 
 ################################################
@@ -107,7 +106,7 @@ for current_loop_val in outer_loops:
     
     # --- SUBSET DATA BY OUTER LOOP (e.g. Filter to just "D0" or just "Responders") ---
     df_filtered = df_main.copy()
-    df_filtered_imputed = None
+    delta_visits = None
     print("\n------------------------------------------------------------------")
     print("------------------------------------------------------------------")
     print("------------------------------------------------------------------")
@@ -125,28 +124,13 @@ for current_loop_val in outer_loops:
         elif MODE == "DELTA":
             # Calculate deltas if in delta mode
             print(f"Transforming data into deltas ({CONFIG['DELTA_BASELINE']} to {current_loop_val})")
-            # Capture the original input for both delta calculations.
-            delta_kwargs = {
-                "df": df_filtered,
-                "id_col": CONFIG["ID_COLUMN"],
-                "time_col": CONFIG["TIME_COLUMN"],
-                "condition_col": CONFIG["CONDITION_COLUMN"],
-                "protein_cols": protein_cols,
-                "id_delimiter": CONFIG["ID_DELIMITER"],
-                "baseline_time": CONFIG["DELTA_BASELINE"],
-                "compare_time": current_loop_val,
-            }
-            # Limma input: preserve missing measurements.
-            df_filtered = calculate_deltas(
-                **delta_kwargs,
-                impute=False
+            df_filtered, visits = prepare_delta_comparison(
+                df_filtered, CONFIG["ID_COLUMN"], CONFIG["TIME_COLUMN"], CONFIG["CONDITION_COLUMN"],
+                protein_cols, CONFIG["ID_DELIMITER"], CONFIG["DELTA_BASELINE"], current_loop_val
             )
-            # Logistic input: retain imputation before subtraction.
+            # One raw baseline/follow-up pair per subject; imputation belongs inside CV.
             if CONFIG.get("RUN_LOGISTIC_REGRESSION", False):
-                df_filtered_imputed = calculate_deltas(
-                    **delta_kwargs,
-                    impute=True
-                )
+                delta_visits = pd.concat(visits, axis=1)
 
             # Re-attach covariates
             covariates = CONFIG.get("COVARIATE_COLUMNS", [])
@@ -161,14 +145,6 @@ for current_loop_val in outer_loops:
                 meta_df = meta_df.drop_duplicates(subset=CONFIG["ID_COLUMN"])
                 # Merge back onto df_filtered
                 df_filtered = pd.merge(df_filtered, meta_df, on=CONFIG["ID_COLUMN"], how="left")
-
-                if df_filtered_imputed is not None:
-                    df_filtered_imputed = pd.merge(
-                        df_filtered_imputed,
-                        meta_df,
-                        on=CONFIG["ID_COLUMN"],
-                        how="left"
-                    )
 
             loop_folder_name = f"{CONFIG['DELTA_BASELINE']}_to_{current_loop_val}"
     
@@ -226,16 +202,6 @@ for current_loop_val in outer_loops:
                 .isin(selected_groups)
             ]
 
-            # Deltas calculated from imputed abundances for logistic regression.
-            df_2_groups_imputed = None
-
-            if df_filtered_imputed is not None:
-                df_2_groups_imputed = df_filtered_imputed[
-                    df_filtered_imputed[col_to_filter]
-                    .astype(str)
-                    .isin(selected_groups)
-                ]
-
             run_statistical_tests(
                 df_subset=df_2_groups,
                 group_col=CONFIG["CONDITION_COLUMN"],
@@ -244,7 +210,7 @@ for current_loop_val in outer_loops:
                 relative_dir=relative_dir,
                 is_paired=False,
                 is_delta=True,
-                df_subset_imputed=df_2_groups_imputed
+                delta_visits=delta_visits
             )
 
 print("\n-----------------------------------")

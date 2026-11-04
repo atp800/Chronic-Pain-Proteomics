@@ -1,5 +1,4 @@
 import os
-import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,16 +8,14 @@ import warnings
 from sklearn.exceptions import ConvergenceWarning
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.linear_model import LogisticRegressionCV
-from sklearn.model_selection import LeaveOneOut
-from sklearn.feature_selection import VarianceThreshold
+from sklearn.model_selection import GridSearchCV, LeaveOneOut, permutation_test_score
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import roc_curve, auc, confusion_matrix, accuracy_score, f1_score
 from sklearn.base import clone
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import permutation_test_score
 from sklearn.utils import resample
 
-from helpers import groupwise_missing_filter, impute_missing_vals
+from logistic_preprocessing import NoEligibleProteins, ProteinFeatures
 
 ##########################################################################
 # Version details for reproducibility/citations
@@ -37,149 +34,101 @@ print(f"scikit-learn version: {sklearn_version}")
 # Suppress the max_iter ConvergenceWarnings from scikit-learn
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
-def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir):
+# Preserve the original search values and tie order (ascending C within each L1 ratio).
+_PARAMETER_GRID = [
+    {"classifier__C": np.logspace(-4, 4, 10), "classifier__l1_ratio": [ratio]}
+    for ratio in (0.1, 0.5, 0.7, 0.9, 0.95, 1.0)
+]
+
+
+def _fit_tuned_model(X, y, delta):
+    pipeline = Pipeline([
+        ("proteins", ProteinFeatures(delta=delta)),
+        ("scale", StandardScaler()),
+        ("classifier", LogisticRegression(
+            penalty="elasticnet", solver="saga", max_iter=10000, random_state=42
+        )),
+    ])
+    # GridSearchCV must wrap the whole pipeline so even inner validation rows
+    # are excluded from selection, imputation and scaling.
+    folds = min(5, int(np.bincount(y).min()))
+    search = GridSearchCV(pipeline, _PARAMETER_GRID, cv=folds, scoring="accuracy",
+                          n_jobs=-1, error_score="raise")
+    return search.fit(X, y).best_estimator_
+
+
+def _leave_one_out_probabilities(X, y, delta):
+    probabilities = np.empty((len(X), 2))
+    for i, (train, test) in enumerate(LeaveOneOut().split(X), start=1):
+        filled = 40 * i // len(X)
+        bar = '█' * filled + '-' * (40 - filled)
+        print(f'\rProgress: |{bar}| {100 * i // len(X)}% ({i}/{len(X)})', end='', flush=True)
+        model = _fit_tuned_model(X.iloc[train], y[train], delta)
+        probabilities[test] = model.predict_proba(X.iloc[test])
+    print("\nValidation Complete.\n")
+    return probabilities
+
+
+def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir, *, delta_visits=None):
     print("\n------------------------------------------------------------------")
     print(f"Running Logistic Regression avec: {compare_name} vs {baseline_name}")
     print("------------------------------------------------------------------")
     
-    ########## PREPPARE DATA ############
-    X = df_subset[protein_cols]
     y = df_subset[group_col]
+    delta = delta_visits is not None
+    if delta:
+        if not delta_visits.index.equals(y.index) or not y.index.is_unique:
+            raise ValueError("Delta endpoints and labels must have the same unique participant index.")
+        X = delta_visits.replace([np.inf, -np.inf], np.nan)
+        has_visits = X["baseline"].notna().any(axis=1) & X["followup"].notna().any(axis=1)
+        if not has_visits.all():
+            print(f"Excluding {int((~has_visits).sum())} participants without measurements at both visits.")
+        X = X.loc[has_visits]
+        y = y.loc[has_visits]
+    else:
+        X = df_subset[protein_cols].replace([np.inf, -np.inf], np.nan)
 
-    # More aggressive group-based missing protein filtering     -   REMOVE OR REMPLACE WITH EARLIER IMPUTATION???
-    print(f"Original dimensionality: {X.shape[1]} proteins")
-    X = groupwise_missing_filter(X, y, threshold=0.7)               # Keep proteins with <30% missing in at least one group
-    print(f"Proteins after dropping >30% missing: {X.shape[1]}")
-    
-    # Remove low-variance features
-    X_temp_for_var = X.fillna(0)                                    # Temporarily fill NaNs for variance calculation
-    selector = VarianceThreshold(threshold=0.1) 
-    try:
-        selector.fit(X_temp_for_var)
-        cols_kept = X.columns[selector.get_support()]
-        X = X[cols_kept]
-        print(f"Proteins after dropping low variance: {X.shape[1]}")
-    except ValueError:
-        print("Warning: Variance filter failed (variance too low globally?), skipping.")
-
-    # Check for NaNs and impute
-    if X.isna().sum().sum() > 0:
-        print("Missing values detected: imputing with down-shifted normal distribution")
-        X = impute_missing_vals(X)
-
-    # Encode target
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
     classes = le.classes_
     print(f"Classes: {classes}")
+    if len(classes) != 2 or np.bincount(y_encoded).min() < 3:
+        print("Skipping logistic regression: nested leave-one-out validation requires at least three rows in each of two classes.")
+        return
 
-    if len(classes) != 2:
-        print(f"Warning: {len(classes)} groups detected. This script is designed for 2 groups.")
+    print("Performing leave-one-out validation with preprocessing and tuning inside each training set...")
+    try:
+        probabilities = _leave_one_out_probabilities(X, y_encoded, delta)
+        # The all-data refit supplies the reported coefficients and bootstrap feature space.
+        full_model = _fit_tuned_model(X, y_encoded, delta)
+    except NoEligibleProteins as exc:
+        print(f"\nSkipping this logistic comparison: {exc}")
+        return
 
-    # Scaling
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    ########### TRAIN MODEL!!! ############
-    print("Training Logistic Regression (sometimes it takes its sweet sweet time, but usually <5 mins)...")
-    
-    # Define the model structure (Nested CV: The model itself does CV to find C)
-    clf = LogisticRegressionCV(
-        Cs=10, 
-        cv=5, 
-        penalty='elasticnet', 
-        solver='saga', 
-        l1_ratios=[0.1, 0.5, 0.7, 0.9, 0.95, 1],
-        random_state=42, 
-        max_iter=10000, 
-        scoring='accuracy',
-        verbose=0,                  # increase for more print statements while running
-        n_jobs=-1
-    )
-
-    print("Performing leave-one-out cross-validation...")
-    clf.fit(X_scaled, y_encoded)
-    cv_outer = LeaveOneOut()            # Simulates a test set for every single sample
-    
-    # Lists to store results
-    y_pred_unbiased = []
-    y_probs_unbiased =[]
-    total_samples = len(X_scaled)
-    
-    # Loop through every sample
-    for i, (train_index, test_index) in enumerate(cv_outer.split(X_scaled)):
-        # Progress bar
-        percent = (i + 1) / total_samples
-        bar_length = 40
-        filled_length = int(bar_length * percent)
-        bar = '█' * filled_length + '-' * (bar_length - filled_length)
-        sys.stdout.write(f'\rProgress: |{bar}| {int(percent * 100)}% ({i+1}/{total_samples})')      # \r returns cursor to start of line, allowing overwrite
-        sys.stdout.flush()
-
-        # Split Data
-        X_train, X_test = X_scaled[train_index], X_scaled[test_index]
-        y_train, y_test = y_encoded[train_index], y_encoded[test_index]
-        
-        # Clone the model (start fresh every time)
-        model_fold = clone(clf) 
-        model_fold.fit(X_train, y_train)
-        
-        # Predict
-        prediction = model_fold.predict(X_test)[0]
-        y_pred_unbiased.append(prediction)
-        
-        if len(classes) == 2:
-            prob = model_fold.predict_proba(X_test)[0][1]
-            y_probs_unbiased.append(prob)
-
-    print("\nValidation Complete.\n")
-    
-    # Convert lists to numpy arrays for the metrics calculations
-    y_pred_unbiased = np.array(y_pred_unbiased)
-    if len(classes) == 2:
-        y_probs_unbiased = np.array(y_probs_unbiased)
-
+    y_pred_cv = probabilities.argmax(axis=1)
+    y_probs_cv = probabilities[:, 1]
     print("\n\n--- Model Performance (Nested CV Estimate) ---")
-    print(f"Accuracy: {accuracy_score(y_encoded, y_pred_unbiased):.4f}")
-    print(f"F1 Score: {f1_score(y_encoded, y_pred_unbiased):.4f}")
-    print(f"Confusion Matrix:\n{confusion_matrix(y_encoded, y_pred_unbiased)}\n")
-
-
-
-    ######### EXTRACT FEATURES (and bootstrapping for feature stability ######### 
-    best_C = clf.C_[0]
-    if isinstance(best_C, np.ndarray): 
-        best_C = best_C[0]
-    best_l1 = clf.l1_ratio_[0]
-
-    print(f"Best Regularistion Strength (C): {best_C}")
-    print(f"Best L1 Ratio: {best_l1}")
+    print(f"Accuracy: {accuracy_score(y_encoded, y_pred_cv):.4f}")
+    print(f"F1 Score: {f1_score(y_encoded, y_pred_cv):.4f}")
+    print(f"Confusion Matrix:\n{confusion_matrix(y_encoded, y_pred_cv)}\n")
+    clf = full_model.named_steps["classifier"]
+    current_protein_names = full_model.named_steps["proteins"].proteins_
+    X_full_scaled = full_model[:-1].transform(X)
+    print(f"Proteins retained in the final fit: {len(current_protein_names)}")
+    print(f"Best Regularisation Strength (C): {clf.C}")
+    print(f"Best L1 Ratio: {clf.l1_ratio}")
     
 
     print("\nRunning bootstrapping for feature stability (calculating confidence intervals)")
-    n_iterations = 500      # add to config??? icnrease to 1000 for more robust estimates???
-
-
-
-
-    # Create a fixed model using the optimal hyperparameters found earlier to save time
-    boot_model = LogisticRegression(
-        C=best_C, 
-        l1_ratio=best_l1, 
-        penalty='elasticnet', 
-        solver='saga', 
-        max_iter=5000,
-        random_state=42
-    )
+    n_iterations = 500
+    boot_model = clone(clf).set_params(max_iter=5000)
 
     bootstrapped_coefs = []
     
     for i in range(n_iterations):
-            # Sample with replacement (ADDED stratify=y_encoded to prevent single-class samples)
-            X_boot, y_boot = resample(X_scaled, y_encoded, random_state=i, stratify=y_encoded)
-            
-            boot_model.fit(X_boot, y_boot)
-            bootstrapped_coefs.append(boot_model.coef_.flatten())
+        X_boot, y_boot = resample(X_full_scaled, y_encoded, random_state=i, stratify=y_encoded)
+        boot_model.fit(X_boot, y_boot)
+        bootstrapped_coefs.append(boot_model.coef_.ravel())
 
     bootstrapped_coefs = np.array(bootstrapped_coefs)
     
@@ -192,9 +141,8 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     selection_freq = np.mean(bootstrapped_coefs != 0, axis=0) * 100
 
     # Determine "Significance" (CI does not cross zero AND selection > 0 in original model)
-    original_coefs = clf.coef_.flatten()
+    original_coefs = clf.coef_.ravel()
     mask = original_coefs != 0
-    current_protein_names = X.columns
     
     selected_proteins = np.array(current_protein_names)[mask]
     selected_coefs = original_coefs[mask]
@@ -225,13 +173,24 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     print(f"Saved features and stability metrics to: {output_file_path}")
 
 
-    ######## OVERALL MODEL SIGNIFICANCE (permutation test)##########
-    print("\nRunning permutation test to calculate P-Value for the model as a whole")       # Shuffles the Y labels to prove the model is significantly better than random guessing
-    score, permutation_scores, pvalue = permutation_test_score(
-        boot_model, X_scaled, y_encoded, scoring="roc_auc", cv=5, n_permutations=100, n_jobs=-1, random_state=42
-    )
-    print(f"Model Original AUC: {score:.4f}")
-    print(f"Model Empirical P-value: {pvalue:.4f}")
+    # Hyperparameters remain fixed for this diagnostic; each fold and each
+    # permutation refits the preprocessing using its own training labels.
+    print("\nPermutation check at the final hyperparameters (tuning is not repeated)")
+    valid_permutation = False
+    try:
+        score, permutation_scores, pvalue = permutation_test_score(
+            full_model, X, y_encoded, scoring="roc_auc", cv=min(5, int(np.bincount(y_encoded).min())),
+            n_permutations=100, n_jobs=-1, random_state=42
+        )
+        valid_permutation = np.isfinite(score) and np.isfinite(permutation_scores).all()
+    except NoEligibleProteins as exc:
+        print(f"Permutation result unavailable: {exc}")
+    else:
+        if not valid_permutation:
+            print("Permutation result unavailable: at least one AUC was undefined.")
+    if valid_permutation:
+        print(f"Fixed-parameter CV AUC: {score:.4f}")
+        print(f"Fixed-parameter permutation p-value: {pvalue:.4f}")
 
 
     ######### VISUALISATION ###########
@@ -240,7 +199,7 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
 
         # Plot 1: ROC curve
         if len(classes) == 2:
-            fpr, tpr, _ = roc_curve(y_encoded, y_probs_unbiased)
+            fpr, tpr, _ = roc_curve(y_encoded, y_probs_cv)
             roc_auc = auc(fpr, tpr)
             
             plt.figure(figsize=(8, 6))
@@ -255,11 +214,11 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
             plt.close()
 
         # Plot II: Permutation distribution plot
-        if len(classes) == 2:
+        if valid_permutation:
             plt.figure(figsize=(8, 6))
             plt.hist(permutation_scores, bins=20, density=True, alpha=0.7, color='gray', label='Null Dist (Permuted)')
             plt.axvline(score, color='red', linestyle='dashed', linewidth=2, label=f'Real Model AUC = {score:.2f}\np-value = {pvalue:.4f}')
-            plt.title('Overall Model Significance (Target Permutation Test)')
+            plt.title('Permutation Test at Fixed Hyperparameters')
             plt.xlabel('Cross-Validated AUC')
             plt.ylabel('Frequency')
             plt.legend(loc='best')
