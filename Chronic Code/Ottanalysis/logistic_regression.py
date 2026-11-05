@@ -7,7 +7,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import warnings
 from sklearn.exceptions import ConvergenceWarning
 
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV, GroupKFold, LeaveOneGroupOut, LeaveOneOut
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, accuracy_score, f1_score
@@ -39,6 +39,18 @@ _PARAMETER_GRID = [
     {"classifier__C": np.logspace(-4, 4, 10), "classifier__l1_ratio": [ratio]}
     for ratio in (0.1, 0.5, 0.7, 0.9, 0.95, 1.0)
 ]
+
+
+def _encode_comparison(labels, baseline_name, compare_name):
+    """Match the caller's comparison order, including labels selected as strings by the GUI."""
+    if pd.isna(baseline_name) or pd.isna(compare_name):
+        raise ValueError("Both baseline and comparison labels are required.")
+    classes = np.asarray([str(baseline_name), str(compare_name)])
+    if classes[0] == classes[1]:
+        raise ValueError("Baseline and comparison labels must be distinct.")
+    if labels.isna().any() or not labels.astype(str).isin(classes).all():
+        raise ValueError("Outcome labels must contain only the requested baseline and comparison, without missing labels.")
+    return labels.astype(str).eq(classes[1]).to_numpy(dtype=int), classes
 
 
 def _complete_pair_mask(X, visits, participant_ids):
@@ -127,7 +139,7 @@ def _coefficient_stability_table(protein_names, original_coefs, bootstrap_coefs)
     }).sort_values('Coefficient (Original)', key=np.abs, ascending=False)
 
 
-def _coefficient_stability_figure(table):
+def _coefficient_stability_figure(table, *, reference_class=None, positive_class=None):
     top = table.head(20)
     y = np.arange(len(top))
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -144,7 +156,8 @@ def _coefficient_stability_figure(table):
     ax.invert_yaxis()
     ax.set_title(f'Coefficient stability (top {len(top)} by absolute full-data coefficient)\n'
                  'Preprocessing and tuning fixed across bootstrap refits')
-    ax.set_xlabel('Coefficient (log odds)')
+    ax.set_xlabel('Coefficient (log odds)' if positive_class is None else
+                  f'Coefficient (log odds of {positive_class} versus {reference_class})')
     ax.axvline(0, color='k', linewidth=1, zorder=0)
     ax.legend(loc='best')
     ax.grid(axis='x', alpha=0.3)
@@ -194,7 +207,11 @@ def _nested_permutation_test(X, y, delta, participant_ids, observed_auc, *, n_pe
 
 def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir,
                             *, delta_visits=None, participant_ids=None):
-    """For longitudinal visits, pass participant IDs indexed like df_subset. Each delta row already represents one person."""
+    """Model comparison (1) versus baseline (0).
+
+    For longitudinal visits, pass participant IDs indexed like df_subset.
+    Each delta row already represents one person.
+    """
     print("\n------------------------------------------------------------------")
     print(f"Running Logistic Regression avec: {compare_name} vs {baseline_name}")
     print("------------------------------------------------------------------")
@@ -231,11 +248,15 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
         n_participants = len(np.unique(participant_ids))
         print(f"Longitudinal logistic regression: {n_participants} complete participant pairs ({len(y)} visits).")
 
-    le = LabelEncoder()
-    y_encoded = le.fit_transform(y)
-    classes = le.classes_
-    print(f"Classes: {classes}")
-    if len(classes) != 2 or np.bincount(y_encoded).min() < 3:
+    try:
+        y_encoded, classes = _encode_comparison(y, baseline_name, compare_name)
+    except ValueError as exc:
+        print(f"Skipping logistic regression: {exc}")
+        return
+    print(f"Class mapping: 0 = {classes[0]} (baseline), 1 = {classes[1]} (comparison/positive).")
+    print(f"Positive coefficients increase predicted log odds of {classes[1]} versus {classes[0]}.")
+    class_counts = np.bincount(y_encoded, minlength=2)
+    if class_counts.min() < 3:
         minimum = "three complete pairs" if paired else "three rows in each of two classes"
         print(f"Skipping logistic regression: nested validation requires at least {minimum}.")
         return
@@ -257,11 +278,15 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
         return
     y_pred_cv = probabilities.argmax(axis=1)
     y_probs_cv = probabilities[:, 1]
+    accuracy = accuracy_score(y_encoded, y_pred_cv)
+    f1 = f1_score(y_encoded, y_pred_cv, pos_label=1, zero_division=0)
+    confusion = pd.DataFrame(confusion_matrix(y_encoded, y_pred_cv, labels=[0, 1]),
+                             index=classes, columns=classes).rename_axis(index='Actual', columns='Predicted')
     print(f"\n\n--- Model Performance ({cv_label} Estimate) ---")
     print(f"Pooled held-out ROC AUC: {observed_auc:.4f}")
-    print(f"Accuracy: {accuracy_score(y_encoded, y_pred_cv):.4f}")
-    print(f"F1 Score: {f1_score(y_encoded, y_pred_cv):.4f}")
-    print(f"Confusion Matrix:\n{confusion_matrix(y_encoded, y_pred_cv)}\n")
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"F1 Score (positive class: {classes[1]}): {f1:.4f}")
+    print(f"Confusion Matrix:\n{confusion}\n")
     clf = full_model.named_steps["classifier"]
     current_protein_names = full_model.named_steps["proteins"].proteins_
     X_full_scaled = full_model[:-1].transform(X)
@@ -284,12 +309,23 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
         bootstrapped_coefs.append(boot_model.coef_.flatten())
 
     logistic_df = _coefficient_stability_table(current_protein_names, clf.coef_.ravel(), np.asarray(bootstrapped_coefs))
+    logistic_df['Reference Class (0)'] = classes[0]
+    logistic_df['Positive Class (1)'] = classes[1]
     print(f"Reporting {len(logistic_df)} proteins with nonzero coefficients in the full-data fit.")
     
     file_prefix = f"LogReg_{compare_name}_vs_{baseline_name}"
     output_file_path = os.path.join(output_dir, f"{file_prefix}_Features.csv")
     logistic_df.to_csv(output_file_path, index=False)
     print(f"Saved features and stability metrics to: {output_file_path}")
+    # Persist the direction and F1 target even if the final model selects no proteins.
+    performance_path = os.path.join(output_dir, f"{file_prefix}_Performance.csv")
+    pd.DataFrame([{
+        'Reference Class (0)': classes[0], 'Positive Class (1)': classes[1],
+        'Reference Observations': class_counts[0], 'Positive Observations': class_counts[1],
+        'Validation': cv_label, 'ROC AUC': observed_auc, 'Accuracy': accuracy,
+        'F1 (Positive Class)': f1,
+    }]).to_csv(performance_path, index=False)
+    print(f"Saved class mapping and performance metrics to: {performance_path}")
 
 
     print("\nPermutation test of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.")
@@ -338,7 +374,7 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
             plt.close()
 
         if not logistic_df.empty:
-            fig = _coefficient_stability_figure(logistic_df)
+            fig = _coefficient_stability_figure(logistic_df, reference_class=classes[0], positive_class=classes[1])
             pdf.savefig(fig)
             plt.close(fig)
         
