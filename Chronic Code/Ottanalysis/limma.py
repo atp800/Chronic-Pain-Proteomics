@@ -8,6 +8,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 # from sklearn.feature_selection import VarianceThreshold
 # from helpers import impute_missing_vals, derive_subject_ids
 from helpers import derive_subject_ids
+from limma_reporting import RESULT_COLUMNS, attach_support, protein_support, write_results
 
 ##################################################################
 # SET LOCATION OF R INSTALLATION
@@ -93,6 +94,7 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
 
     ######### PREPARE DATA ###########
     subjects = None
+    excluded_id_rows = 0
     if is_paired:
         sample_ids = df_subset[config["ID_COLUMN"]]
         subjects = pd.Series(
@@ -101,6 +103,7 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
         )
         known = sample_ids.notna() & subjects.str.strip().ne("")
         if not known.all():
+            excluded_id_rows = int((~known).sum())
             print(f"Excluding {int((~known).sum())} rows without a participant ID.")
             df_subset = df_subset.loc[known]
             subjects = subjects.loc[known]
@@ -111,7 +114,9 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
         print("Skipping limma: both distinct levels of the requested comparison are required.")
         return
 
-    X_limma = df_subset[protein_cols].replace([np.inf, -np.inf], np.nan)
+    observed = df_subset[protein_cols].replace([np.inf, -np.inf], np.nan)
+    X_limma = observed.copy()
+    complete = None
     if is_paired:
         if pd.MultiIndex.from_arrays([subjects, groups]).has_duplicates:
             print("Skipping paired limma: duplicate participant/visit. Check IDs or resolve replicate samples.")
@@ -127,13 +132,48 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
         requirement = "two observations in each group"
 
     keep = replicated & X_limma.var(ddof=0).gt(0)
+    # IDs are used for reporting distinct participants in independent comparisons;
+    # delta rows already contain participant IDs, so do not split them a second time.
+    report_subjects = subjects
+    if report_subjects is None:
+        id_col = config.get('ID_COLUMN')
+        if id_col in df_subset:
+            report_subjects = df_subset[id_col].astype('string')
+            if not is_delta:
+                report_subjects = report_subjects.str.split(config.get('ID_DELIMITER', '-'), n=1, regex=False).str[0]
+            report_subjects = report_subjects.mask(report_subjects.str.strip().eq(''))
+        else:
+            report_subjects = pd.Series(pd.NA, index=df_subset.index, dtype='string')
+    support = protein_support(observed, X_limma, groups, report_subjects, baseline, comparison,
+                              replicated, keep, paired=is_paired, delta=is_delta,
+                              complete_pairs=None if complete is None else complete.sum())
+    info = pd.DataFrame([
+        {'Setting': 'Comparison', 'Value': f'{comparison} - {baseline}'},
+        {'Setting': 'Mode', 'Value': 'Delta group comparison' if is_delta else ('Paired longitudinal' if is_paired else 'Independent group comparison')},
+        {'Setting': 'Observed counts', 'Value': 'Finite protein values before eligibility filtering and before masking unpaired measurements; zeros count as observed. Delta counts describe observed changes, not individual endpoints.'},
+        {'Setting': 'Participant counts', 'Value': 'Distinct IDs using the configured delimiter; delta IDs are already participant IDs. Blank when an observed value has an unknown ID. Counts describe the supplied input, not upstream imputation.'},
+        {'Setting': 'Fit observation counts', 'Value': 'Observed rows supplied to lmFit for this protein, after masking unpaired measurements. Zero for proteins excluded before fitting.'},
+        {'Setting': 'Complete pairs', 'Value': 'Longitudinal: participants observed at both compared visits. Delta: participants with a finite change (both endpoints observed in the main pipeline). Not applicable to single-visit group comparisons.'},
+        {'Setting': 'Missing proportions', 'Value': 'Missing/non-finite protein values divided by input rows in each group, before masking unpaired measurements; proportions run from 0 to 1.'},
+        {'Setting': 'Protein imputation', 'Value': 'None in limma; protein imputed proportions are zero. Missing covariates are handled separately by the existing mean/Unknown replacement.'},
+        {'Setting': 'Excluded rows with unknown participant ID', 'Value': excluded_id_rows},
+        {'Setting': 'Residual_DF', 'Value': 'Per-protein residual degrees of freedom from lmFit, including the fitted covariates/participant effects. Blank if not fitted.'},
+        {'Setting': 'Moderated_DF', 'Value': 'Per-protein total degrees of freedom from eBayes used for moderated t-tests and confidence intervals. Blank if not tested.'},
+        {'Setting': 'CI.L / CI.R', 'Value': 'Individual 95% moderated confidence limits from limma topTable for the reported logFC coefficient. Not simultaneous or selection-adjusted intervals across proteins; retain adj.P.Val for multiple-testing assessment.'},
+        {'Setting': 'Effect scale', 'Value': 'Comparison minus baseline on the supplied scale. With log2 input: log2 fold change; in delta mode: between-group difference in log2 changes. Covariate sheets show that covariate coefficient.'},
+        {'Setting': 'Covariates', 'Value': ', '.join(config.get('COVARIATE_COLUMNS', [])) or 'None'},
+    ])
+    file_prefix = f"Limma_{baseline_name}_vs_{compare_name}"
+    excel_path = os.path.join(output_dir, f"{file_prefix}_Results.xlsx")
+    empty_results = attach_support(pd.DataFrame(columns=RESULT_COLUMNS), support)
     X_limma = X_limma.loc[:, keep]
     print(
         f"Retained {X_limma.shape[1]}/{len(protein_cols)} proteins "
         f"with at least {requirement} and observed variation."
     )
     if X_limma.empty:
-        print("Skipping limma: no eligible proteins. No new limma results were written.")
+        write_results(excel_path, empty_results, {}, support, info, config)
+        print("Skipping limma: no eligible proteins. Support and exclusion reasons saved; result sheets are empty.")
         return
 
     print(
@@ -200,18 +240,32 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
         testable <- fit$df.residual > 0 & is.finite(fit$coefficients[, "comparison"])
         sum(testable)
     """)[0])
+    with localconverter(ro.default_converter + pandas2ri.converter):
+        fit_support = ro.conversion.rpy2py(ro.r('data.frame(Protein=fit$genes$Protein, Residual_DF=fit$df.residual, Effect_Estimable=is.finite(fit$coefficients[, "comparison"]), Testable=testable)'))
+    support = support.set_index('Protein')
+    fit_support = fit_support.set_index('Protein')
+    support.loc[fit_support.index, 'Residual_DF'] = fit_support['Residual_DF']
+    support.loc[fit_support.index, 'Status'] = np.where(
+        ~fit_support['Effect_Estimable'], 'Comparison effect is not estimable',
+        np.where(fit_support['Residual_DF'].le(0), 'No residual degrees of freedom', 'Tested'))
+    support = support.reset_index()
     print(
         f"Testable proteins for {compare_string}: {n_testable}/{X_limma.shape[1]} "
         "(estimable effect and positive residual degrees of freedom)."
     )
     if n_testable == 0:
-        print("Skipping limma: no testable proteins. No new limma results were written.")
+        write_results(excel_path, attach_support(pd.DataFrame(columns=RESULT_COLUMNS), support), {}, support, info, config)
+        print("Skipping limma: no testable proteins. Support and exclusion reasons saved; result sheets are empty.")
         return
 
     ro.r('fit <- eBayes(fit[testable, ])')
-    r_results = ro.r('topTable(fit, coef="comparison", number=Inf, sort.by="P")')
+    ro.r('fit$genes$Residual_DF <- fit$df.residual; fit$genes$Moderated_DF <- fit$df.total')
+    r_results = ro.r('topTable(fit, coef="comparison", number=Inf, sort.by="P", confint=0.95)')
     with localconverter(ro.default_converter + pandas2ri.converter):
         df_results = ro.conversion.rpy2py(r_results)
+    moderated_df = df_results.set_index('Protein')['Moderated_DF']
+    support['Moderated_DF'] = support['Protein'].map(moderated_df)
+    df_results = attach_support(df_results, support)
     
     # Extract any covariate results from the same set of tested proteins.
     cov_results_dict = {}
@@ -220,13 +274,12 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
     cov_cols = list(ro.r('grep("^cov_", colnames(design), value=TRUE)'))
     
     for c_col in cov_cols:
-        r_cov_res = ro.r(f'topTable(fit, coef="{c_col}", number=Inf, sort.by="P")')
+        r_cov_res = ro.r(f'topTable(fit, coef="{c_col}", number=Inf, sort.by="P", confint=0.95)')
         with localconverter(ro.default_converter + pandas2ri.converter):
-            cov_results_dict[c_col] = ro.conversion.rpy2py(r_cov_res)
+            cov_results_dict[c_col] = attach_support(ro.conversion.rpy2py(r_cov_res), support)
 
 
     # Output generation
-    file_prefix = f"Limma_{baseline_name}_vs_{compare_name}"
     
     # 1. Volcano Plot
     pdf_path = os.path.join(output_dir, f"{file_prefix}_Volcano.pdf")
@@ -246,25 +299,4 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
         plt.close()
 
     # 2. Excel File
-    excel_path = os.path.join(output_dir, f"{file_prefix}_Results.xlsx")
-    final_cols = [c for c in['Protein', 'logFC', 'P.Value', 'adj.P.Val', 'AveExpr', 'B', 't'] if c in df_results.columns]
-    
-    sig_mask = (df_results['P.Value'] < config["P_THRESHOLD"]) & (df_results['logFC'].abs() > config["LOG_FC_THRESHOLD"])
-    df_sig = df_results.loc[sig_mask, final_cols]
-
-    sig_mask_adj = (df_results['adj.P.Val'] < config["P_THRESHOLD"]) & (df_results['logFC'].abs() > config["LOG_FC_THRESHOLD"])
-    df_sig_adj = df_results.loc[sig_mask_adj, final_cols]
-
-    print(f"Significant proteins (raw p-value < {config['P_THRESHOLD']} & abs(logFC) > {config['LOG_FC_THRESHOLD']}): {df_sig.shape[0]}")
-    print(f"Significant proteins (adjusted p-value < {config['P_THRESHOLD']} & abs(logFC) > {config['LOG_FC_THRESHOLD']}): {df_sig_adj.shape[0]}")
-
-    with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-        df_results[final_cols].sort_values(by='adj.P.Val').to_excel(writer, sheet_name='All_Proteins', index=False)
-        df_sig.sort_values(by='P.Value').to_excel(writer, sheet_name='Significant_Raw_PVal', index=False)
-        df_sig_adj.sort_values(by='adj.P.Val').to_excel(writer, sheet_name='Significant_Adj_PVal', index=False)
-
-        # Add a new tab for each covariate
-        for cov_name, df_cov in cov_results_dict.items():
-            sheet_name = f"Cov_Effect_{cov_name.replace('cov_', '')}"[:31]  # truncate if over 31 char excel sheet name limit
-            c_cols = [c for c in ['Protein', 'logFC', 'P.Value', 'adj.P.Val', 'AveExpr', 't'] if c in df_cov.columns]
-            df_cov[c_cols].to_excel(writer, sheet_name=sheet_name, index=False)
+    write_results(excel_path, df_results, cov_results_dict, support, info, config)

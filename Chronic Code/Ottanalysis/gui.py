@@ -21,6 +21,11 @@ class ProteomicsGUI:
         self.v_id_col = tk.StringVar(value=CONFIG.get("ID_COLUMN", ""))
         self.v_group_col = tk.StringVar(value=CONFIG.get("CONDITION_COLUMN", ""))
         self.v_time_col = tk.StringVar(value=CONFIG.get("TIME_COLUMN", "None"))
+        # Remember column roles by name, including columns absent from an interim sheet.
+        self._column_selections = {
+            key: set(CONFIG.get(key, []))
+            for key in ("COVARIATE_COLUMNS", "UNNEEDED_COLUMNS")
+        }
         
         # Mode specific Variables
         self.v_group_base = tk.StringVar()
@@ -216,10 +221,11 @@ class ProteomicsGUI:
         path = self.v_input.get()
         if os.path.exists(path):
             try:
-                xl = pd.ExcelFile(path)
-                self.cb_sheet['values'] = xl.sheet_names
-                if self.v_sheet.get() not in xl.sheet_names:
-                    self.v_sheet.set(xl.sheet_names[0])
+                with pd.ExcelFile(path) as xl:
+                    sheet_names = xl.sheet_names
+                self.cb_sheet['values'] = sheet_names
+                if self.v_sheet.get() not in sheet_names:
+                    self.v_sheet.set(sheet_names[0])
                 self.load_columns()
             except Exception as e:
                 print(f"Error reading sheets: {e}")
@@ -236,16 +242,25 @@ class ProteomicsGUI:
                 self.cb_group['values'] = ["None"] + cols
                 self.cb_time['values'] = ["None"] + cols
                 
-                self.lb_ignore.delete(0, tk.END)
-                self.lb_covars.delete(0, tk.END)
-                for col in cols:
-                    self.lb_ignore.insert(tk.END, col)
-                    self.lb_covars.insert(tk.END, col)
+                self._refresh_column_list(self.lb_ignore, cols, "UNNEEDED_COLUMNS")
+                self._refresh_column_list(self.lb_covars, cols, "COVARIATE_COLUMNS")
                     
                 self.update_group_values()
                 self.update_time_values()
             except Exception as e:
                 print(f"Error loading columns: {e}")
+
+    def _refresh_column_list(self, listbox, columns, config_key):
+        selected = self._column_selections[config_key]
+        # Replace remembered choices for visible columns with the user's current
+        # selection. An explicitly cleared selection must stay cleared.
+        selected.difference_update(listbox.get(0, tk.END))
+        selected.update(self.get_listbox_vals(listbox))
+        listbox.delete(0, tk.END)
+        for index, column in enumerate(columns):
+            listbox.insert(tk.END, column)
+            if column in selected:
+                listbox.selection_set(index)
 
     def update_group_values(self, event=None):
         path = self.v_input.get()
