@@ -10,11 +10,15 @@ import numpy as np
 import pandas as pd
 
 import hinge_model as hinge
+from hinge_inference import unavailable_test
 from test_hinge_fallback import repeated_data
 
 
 class HingeObservedDataTests(unittest.TestCase):
     def setUp(self):
+        test = unavailable_test(9, 42, 'Completed')
+        test['Hinge_Search_PValue'] = .02
+        self.enterContext(patch.object(hinge, 'bootstrap_hinge_test', return_value=test))
         self.enterContext(redirect_stdout(io.StringIO()))
         self.folder = Path(self.enterContext(TemporaryDirectory()))
         self.data = repeated_data()
@@ -83,7 +87,7 @@ class HingeObservedDataTests(unittest.TestCase):
         self.assertTrue(candidates.N_Observed.eq(25).all())
         self.assertEqual(candidates.loc[candidates.Candidate_Time_Numeric.eq(8), 'Status'].iloc[0],
                          'No data on both sides')
-        self.assertTrue(candidates.Slope_2_Change_PValue.isna().all())
+        self.assertTrue(candidates.Slope_2_Change_PValue_Nominal.isna().all())
         self.assertEqual(sheets['All_Model_Results'].N_Observed.iloc[0], 25)
 
     def test_incomplete_mixed_fit_and_plot_match_direct_observed_data_fit(self):
@@ -125,7 +129,7 @@ class HingeObservedDataTests(unittest.TestCase):
         self.assertEqual(row.Model_Type, 'Mixed-Effects')
         self.assertEqual(row.N_Observed, len(expected))
         np.testing.assert_allclose(
-            [row.Intercept, row.Slope_1_Gradient, row.Slope_2_Change, row.AIC, row.Slope_2_Change_PValue],
+            [row.Intercept, row.Slope_1_Gradient, row.Slope_2_Change, row.AIC, row.Slope_2_Change_PValue_Nominal],
             [reference.params.Intercept, reference.params.slope1, reference.params.slope2_change,
              reference.aic, reference.pvalues.slope2_change], rtol=1e-12,
         )
@@ -150,7 +154,7 @@ class HingeObservedDataTests(unittest.TestCase):
         self.assertEqual(coverage.at['flat', 'Status'], 'No observed abundance variation')
         candidates = sheets['All_Candidate_Timepoints']
         self.assertEqual(len(candidates), 8)
-        self.assertTrue(candidates.Slope_2_Change_PValue.isna().all())
+        self.assertTrue(candidates.Slope_2_Change_PValue_Nominal.isna().all())
         self.assertFalse(candidates.Is_Best_Hinge.any())
 
     def test_insufficient_observed_repeats_allow_only_descriptive_fallback(self):
@@ -171,5 +175,5 @@ class HingeObservedDataTests(unittest.TestCase):
                 self.assertEqual(row.Model_Type, 'Fixed-Effects')
                 self.assertEqual(row.N_Participants_Repeated, int(add_one_repeat))
                 self.assertEqual(row.N_Observed, 8 + int(add_one_repeat))
-                self.assertTrue(np.isnan(row.Slope_2_Change_PValue))
+                self.assertTrue(np.isnan(row.Slope_2_Change_PValue_Nominal))
                 self.assertIn('fewer than two participants', row.Mixed_Fit_Diagnostics)

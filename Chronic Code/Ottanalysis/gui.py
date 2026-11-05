@@ -31,6 +31,7 @@ class ProteomicsGUI:
         self.v_delta_base_grp = tk.StringVar()
 
         self.v_hinge_num_plots = tk.IntVar(value=CONFIG.get("HINGE_NUM_PLOTS", 20))
+        self.v_hinge_bootstraps = tk.IntVar(value=CONFIG.get("HINGE_BOOTSTRAP_SIMULATIONS", 9999))
         
         # Test Variables
         self.v_run_limma = tk.BooleanVar(value=CONFIG.get("RUN_LIMMA", True))
@@ -181,6 +182,11 @@ class ProteomicsGUI:
         # A spinbox - apparently better for numeric input
         self.sp_hinge_plots = ttk.Spinbox(self.lf_hinge_options, from_=0, to=1000, increment=5, textvariable=self.v_hinge_num_plots, width=10)
         self.sp_hinge_plots.grid(row=1, column=1, sticky="w", padx=5)
+        ttk.Label(self.lf_hinge_options, text="Bootstrap simulations per protein:").grid(row=1, column=2, sticky="w", padx=(20, 0))
+        ttk.Spinbox(self.lf_hinge_options, from_=1, to=999999, increment=1000,
+                    textvariable=self.v_hinge_bootstraps, width=10).grid(row=1, column=3, sticky="w", padx=5)
+        ttk.Label(self.lf_hinge_options, text="More simulations give finer p-values and take longer. Significance uses search-adjusted FDR.").grid(
+            row=2, column=0, columnspan=4, sticky="w", pady=3)
         
 
     def build_tests_section(self):
@@ -327,6 +333,14 @@ class ProteomicsGUI:
         CONFIG["RUN_HINGE"] = self.v_run_hinge.get()
 
         if CONFIG["RUN_HINGE"]:
+            try:
+                simulations = self.v_hinge_bootstraps.get()
+                if simulations < 1:
+                    raise ValueError
+            except (ValueError, tk.TclError):
+                messagebox.showerror("Error", "Hinge bootstrap simulations must be a positive integer.")
+                return
+            CONFIG["HINGE_BOOTSTRAP_SIMULATIONS"] = simulations
             CONFIG["HINGE_PEAK_CANDIDATES"] = self.get_listbox_vals(self.lb_hinge_peaks)
             CONFIG["HINGE_GROUPS_TO_RUN"] = self.get_listbox_vals(self.lb_hinge_groups)
             CONFIG["HINGE_NUM_PLOTS"] = self.v_hinge_num_plots.get()

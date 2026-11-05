@@ -265,7 +265,10 @@ if CONFIG.get("RUN_HINGE", False):
             candidate_peaks=CONFIG["HINGE_PEAK_CANDIDATES"],
             num_plots=CONFIG["HINGE_NUM_PLOTS"],
             output_dir=output_subfolder,
-            subject_id_delimiter=CONFIG.get("ID_DELIMITER", "-")
+            subject_id_delimiter=CONFIG.get("ID_DELIMITER", "-"),
+            n_bootstrap=CONFIG.get("HINGE_BOOTSTRAP_SIMULATIONS", 9999),
+            random_seed=CONFIG.get("HINGE_BOOTSTRAP_SEED", 42),
+            fdr_threshold=CONFIG.get("P_THRESHOLD", 0.05),
         )
 
         if group is not None and result_file is not None:

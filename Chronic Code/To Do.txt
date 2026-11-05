@@ -9,8 +9,7 @@ Critical — can invalidate a result from your planned analyses
 - FIXED - #16 · Logistic Significant CI flags can falsely identify proteins as significant. The intervals describe stability after preprocessing, tuning and selection. Using those flags to declare individual biomarkers significant is unsupported.
 - FIXED - #12 · Hinge fallback fits ignore repeated visits. This remains relevant despite your matching IDs. Rows marked Fixed-Effects treat one person’s visits as independent, making their slope-change p-values unreliable. This issue does not affect the four limma comparisons as specified.
 - FIXED - #17 · Hinge imputation can manufacture a trajectory. Complete attendance does not guarantee complete measurements for each protein. If a participant has only one observed abundance for a protein, the code fills their other visits with zero and fits the resulting trajectory as observed data.
-
-- #19 · Hinge significance does not account for the search across days and proteins. Choosing the lowest-AIC day and reporting its ordinary p-value overstates evidence for a bend. Prespecifying D14 as the sole candidate removes the day-search problem. Testing many proteins still requires multiple-testing control.
+- FIXED - #19 · Hinge significance does not account for the search across days and proteins. Choosing the lowest-AIC day and reporting its ordinary p-value overstates evidence for a bend. Prespecifying D14 as the sole candidate removes the day-search problem. Testing many proteins still requires multiple-testing control.
 
 Important — improves validity or confidence in these results
 - #3 · Logistic coefficient direction can contradict the comparison name. With your example labels T0 and D14, positive coefficients predict T0. With NonResp and Resp, they predict Resp. The same positive-class choice determines F1.

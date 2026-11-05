@@ -14,11 +14,12 @@ from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 import hinge_model as hinge
 from compare_hinge_results import compare_hinge_results
+from hinge_inference import unavailable_test
 
 
 def mixed_result(**changes):
     result = SimpleNamespace(
-        converged=True, aic=10000.,
+        converged=True, aic=10000., llf=-4995.,
         params=pd.Series({'Intercept': 12., 'slope1': 2., 'slope2_change': -3., 'Group Var': 1.}),
         bse_fe=pd.Series([.2, .1, .15]),
         pvalues=pd.Series({'Intercept': .001, 'slope1': .01, 'slope2_change': .02}),
@@ -136,6 +137,10 @@ class MixedRetryTests(unittest.TestCase):
 
 class HingeReportingTests(unittest.TestCase):
     def setUp(self):
+        # These tests isolate fit/reporting behaviour; bootstrap calibration is tested separately.
+        test = unavailable_test(9, 42, 'Completed')
+        test['Hinge_Search_PValue'] = .02
+        self.enterContext(patch.object(hinge, 'bootstrap_hinge_test', return_value=test))
         self.output = self.enterContext(redirect_stdout(io.StringIO()))
         self.folder = Path(self.enterContext(TemporaryDirectory()))
         self.data = repeated_data()
@@ -168,14 +173,14 @@ class HingeReportingTests(unittest.TestCase):
         self.assertEqual(selected.at['mixed', 'Mixed_Optimizer'], 'bfgs')
         self.assertEqual(selected.at['fallback', 'Model_Type'], 'Fixed-Effects')
         self.assertIn('Descriptive only', selected.at['fallback', 'Inference_Status'])
-        self.assertTrue(selected.loc['fallback', ['Slope_1_PValue', 'Slope_2_Change_PValue']].isna().all())
+        self.assertTrue(selected.loc['fallback', ['Slope_1_PValue_Nominal', 'Slope_2_Change_PValue_Nominal', 'Hinge_FDR']].isna().all())
         self.assertTrue(np.isfinite(selected.loc['fallback', ['Intercept', 'Slope_1_Gradient', 'Slope_2_Gradient']].astype(float)).all())
         candidates = sheets['All_Candidate_Timepoints']
         fixed = candidates[candidates.Model_Type.eq('Fixed-Effects')]
-        self.assertTrue(fixed.Slope_2_Change_PValue.isna().all())
+        self.assertTrue(fixed.Slope_2_Change_PValue_Nominal.isna().all())
         self.assertLess(fixed.AIC.max(), selected.at['mixed', 'AIC'])
         self.assertEqual(list(sheets['Top_Mixed_Models'].Protein), ['mixed'])
-        self.assertTrue(sheets['Fixed_Effects_Models'].Slope_2_Change_PValue.isna().all())
+        self.assertTrue(sheets['Fixed_Effects_Models'].Slope_2_Change_PValue_Nominal.isna().all())
         self.assertEqual(plot.call_count, 1)
         self.assertEqual(plot.call_args.args[0], 'mixed')
         plotted_row = plot.call_args.args[2]
@@ -200,7 +205,7 @@ class HingeReportingTests(unittest.TestCase):
         self.assertTrue(sheets['Top_Mixed_Models'].empty)
         candidates = sheets['All_Candidate_Timepoints']
         self.assertEqual(candidates.Is_Best_Hinge.sum(), 1)
-        self.assertTrue(candidates.Slope_2_Change_PValue.isna().all())
+        self.assertTrue(candidates.Slope_2_Change_PValue_Nominal.isna().all())
         eligible = candidates[candidates.Status.eq('Fitted')]
         self.assertTrue(eligible.Mixed_Fit_Diagnostics.str.contains('cg: LinAlgError: singular').all())
         self.assertEqual(sheets['All_Model_Results'].AIC.iloc[0], eligible.AIC.min())
@@ -210,7 +215,7 @@ class HingeReportingTests(unittest.TestCase):
              patch.object(hinge.smf, 'ols', side_effect=ValueError('OLS failed')):
             self.assertIsNone(self.run_hinge(['mixed']))
         table = pd.read_excel(self.folder / 'hinge_candidate_diagnostics.xlsx')
-        self.assertTrue(table.Slope_2_Change_PValue.isna().all())
+        self.assertTrue(table.Slope_2_Change_PValue_Nominal.isna().all())
         self.assertFalse(table.Is_Best_Hinge.any())
         self.assertTrue(table.Status.str.contains('OLS also failed').all())
         self.assertTrue(table.Mixed_Fit_Diagnostics.str.contains('cg:').all())
@@ -244,7 +249,7 @@ class HingeReportingTests(unittest.TestCase):
         self.assertAlmostEqual(row.AIC, mixed.AIC.min())
         self.assertTrue((self.folder / 'Hinge_Model_Plots' / 'mixed_hinge_plot.png').is_file())
 
-    def test_group_overlap_excludes_legacy_fallback_pvalues(self):
+    def test_group_overlap_excludes_fallbacks_even_if_given_small_corrected_values(self):
         config = {'HINGE_GROUPS_TO_RUN': ['Resp', 'NonResp'], 'P_THRESHOLD': .05,
                   'OUTPUT_FOLDER': str(self.folder)}
         for all_fixed in [False, True]:
@@ -254,8 +259,8 @@ class HingeReportingTests(unittest.TestCase):
                     table = pd.DataFrame({
                         'Protein': ['mixed', 'fallback'],
                         'Model_Type': ['Fixed-Effects' if all_fixed else 'Mixed-Effects', 'Fixed-Effects'],
-                        'Slope_1_PValue': [.01, 1e-12],
-                        'Slope_2_Change_PValue': [.02, 1e-12],
+                        'Hinge_Search_PValue': [.01, 1e-12],
+                        'Hinge_FDR': [.02, 1e-12],
                     })
                     paths[group] = self.folder / f'{group}.xlsx'
                     table.to_excel(paths[group], sheet_name='All_Model_Results', index=False)
@@ -265,4 +270,4 @@ class HingeReportingTests(unittest.TestCase):
                 self.assertTrue(sheets['Groups'].Proteins_Tested.eq(0 if all_fixed else 1).all())
                 self.assertTrue(sheets['Groups'].Descriptive_Fallbacks.eq(2 if all_fixed else 1).all())
                 reported = sheets['Group_1_Results']
-                self.assertTrue(reported.loc[reported.Model_Type.eq('Fixed-Effects'), 'Slope_2_Change_PValue'].isna().all())
+                self.assertTrue(reported.loc[reported.Model_Type.eq('Fixed-Effects'), 'Hinge_FDR'].isna().all())

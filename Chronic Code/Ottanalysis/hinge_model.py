@@ -11,33 +11,23 @@ from tqdm import tqdm
 from word2number import w2n
 import re
 from helpers import convert_timepoint_to_number, derive_subject_ids
+from hinge_inference import (DEFAULT_BOOTSTRAPS, DEFAULT_SEED, adjust_hinge_fdr,
+                             bootstrap_hinge_test, unavailable_test, validate_test_settings)
 import numpy as np
 import traceback
 
 
 '''
-Creates a mixed-effects hinge model for each protein, selecting its candidate peak by AIC.
-Uses observed abundances only, retaining incomplete participants without imputation.
-If all mixed fits fail, retains an OLS fallback for description only:
-
-- finds an average peak (or trough) amongst participants 
-- creates an initial upward or downward slope to that that best fits the data from all participants 
-- creates an opposite slope on the other side of the peak/troughin the same way 
-- looks at how far the participant's actual datapoints are from the created slopes looks at the gradient of the slopes
-- generates a p-value from how significantly the slopes differ from 0 
-
-
-Output should include (for each protein):
-- average peak/trough
-- gradient of upward slope
-- gradient of downward slope
-- how well the model fits the data
-- p-values for anything it makes sense to have them for
-- visualisation of the best fitting models (separate file)
+Fits a random-intercept hinge model to each protein's observed measurements.
+The minimum-AIC candidate estimates the bend day; the slopes need not reverse.
+Significance compares the full candidate search with a linear no-bend mixed
+model using a parametric bootstrap, then adjusts across proteins using BH FDR.
+Ordinary coefficient p-values are nominal descriptions of the selected fit.
+If all mixed fits fail, the best OLS fallback is retained for description only.
 '''
 
 
-def _fit_mixed_model(df_long):
+def _fit_mixed_model(df_long, *, hinge=True):
     """Retry the same random-intercept model; return the first usable fit and its diagnostics."""
     attempts = []
     for optimizer in ("lbfgs", "bfgs", "cg"):
@@ -46,7 +36,7 @@ def _fit_mixed_model(df_long):
             try:
                 # Start each attempt afresh, including after singular-matrix errors.
                 model = smf.mixedlm(
-                    "value ~ slope1 + slope2_change", df_long,
+                    "value ~ slope1 + slope2_change" if hinge else "value ~ slope1", df_long,
                     groups=df_long['subject_id_col']
                 )
                 result = model.fit(method=optimizer, reml=False, maxiter=200)
@@ -56,7 +46,8 @@ def _fit_mixed_model(df_long):
                     raise ValueError("non-finite AIC or coefficients")
                 if not np.isfinite(result.bse_fe).all() or (result.bse_fe <= 0).any():
                     raise ValueError("unusable fixed-effect standard errors")
-                if not np.isfinite(result.pvalues[['slope1', 'slope2_change']]).all():
+                slope_terms = ['slope1', 'slope2_change'] if hinge else ['slope1']
+                if not np.isfinite(result.pvalues[slope_terms]).all():
                     raise ValueError("non-finite slope p-values")
             except Exception as exc:
                 result = None
@@ -127,9 +118,11 @@ def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_c
     ax.set_xticks(tick_locations)
     ax.set_xticklabels(tick_labels)
 
+    p_label = 'search p upper bound' if model_result['Search_PValue_Is_Upper_Bound'] else 'search p'
     ax.set_title(
         f'Mixed-Effects Hinge Model for: {protein_name}\n'
-        f'(Best Fit AIC: {model_result["AIC"]:.2f})'
+        f'Best Fit AIC: {model_result["AIC"]:.2f}; {p_label}: {model_result["Hinge_Search_PValue"]:.3g}; '
+        f'BH FDR: {model_result["Hinge_FDR"]:.3g}'
     )
     ax.set_xlabel('Time')
     ax.set_ylabel('Log2 Abundance')
@@ -140,17 +133,21 @@ def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_c
     plt.close(fig)
 
 
-def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plots, output_dir, subject_id_delimiter):
+def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plots, output_dir, subject_id_delimiter,
+                    *, n_bootstrap=DEFAULT_BOOTSTRAPS, random_seed=DEFAULT_SEED, fdr_threshold=.05):
     """
     Fits a mixed-effects hinge model for each protein
 
     For each protein, iterates through candidate peaks, selects the
     best mixed model based on AIC, and saves the results and visualisations.
+    Significance uses a full-search bootstrap and BH correction across proteins.
     If no mixed fit succeeds, saves the best descriptive OLS fit without p-values.
     Missing outcomes are omitted separately for each protein; incomplete participants remain.
     """
+    validate_test_settings(n_bootstrap, random_seed, fdr_threshold)
     print("Creating hinge models (mixed-effects optimisers: lbfgs, bfgs, cg; OLS fallback is descriptive only)")
     print("Using observed protein measurements only; missing abundances are not imputed.")
+    print(f"Whole-search bootstrap: up to {n_bootstrap} simulations per protein; minimum p = {1 / (n_bootstrap + 1):.6g}.")
 
     if not protein_cols:
         print("Hinge analysis skipped: no protein columns found.")
@@ -200,7 +197,15 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         {'Setting': 'Mixed-model replication', 'Value': 'At least two participants with observations at two or more distinct times. This is a minimum safeguard, not a guarantee of precision.'},
         {'Setting': 'Candidate comparison', 'Value': 'All candidate hinges for a protein use the same observed rows; AIC compared within model type.'},
         {'Setting': 'Missingness assumption', 'Value': 'Likelihood inference assumes missing at random given the model. Abundance-dependent non-detection may still bias estimates.'},
-        {'Setting': 'P-values', 'Value': 'Mixed-model p-values are nominal; OLS fallbacks are descriptive only.'},
+        {'Setting': 'Search test', 'Value': 'Parametric bootstrap of maximum mixed-model likelihood gain over a linear no-bend mixed model; repeats all eligible candidate days.'},
+        {'Setting': 'Bootstrap target', 'Value': n_bootstrap},
+        {'Setting': 'Bootstrap seed', 'Value': random_seed},
+        {'Setting': 'Minimum bootstrap p-value', 'Value': 1 / (n_bootstrap + 1)},
+        {'Setting': 'Bootstrap failures/stopping', 'Value': 'Failed draws count as exceedances. Early stopping only after significance is impossible; uncomputed draws also count as exceedances, yielding a labelled upper bound.'},
+        {'Setting': 'FDR method', 'Value': 'Benjamini-Hochberg (BH); assumes independent or suitably positively dependent protein tests.'},
+        {'Setting': 'FDR family', 'Value': f'All {len(protein_cols)} requested proteins in this group/sheet. Skipped/unavailable tests count as p=1 for adjustment and remain blank in results.'},
+        {'Setting': 'FDR threshold', 'Value': fdr_threshold},
+        {'Setting': 'Nominal coefficients', 'Value': 'Columns ending _Nominal do not account for day selection; not used for significance, ranking or overlap. Best_Peak is an estimate, not a confirmed exact day.'},
     ])
 
     # Map numeric times back to their original labels, such as "D7".
@@ -246,6 +251,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             protein_issue = 'No observed abundance variation'
 
         best_by_type = {}
+        candidate_llfs = {}
 
         # Iterate through numeric candidate peaks to find the best fit
         for peak in candidate_peaks_numeric:
@@ -260,7 +266,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                 'Mixed_Optimizer': None,
                 'Mixed_Fit_Diagnostics': '',
                 'AIC': np.nan,
-                'Slope_2_Change_PValue': np.nan,
+                'Slope_2_Change_PValue_Nominal': np.nan,
                 'Status': 'Fit failed'
             }
             all_candidate_results.append(candidate_record)
@@ -286,6 +292,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             if np.linalg.matrix_rank(design) < 3:
                 candidate_record['Status'] = 'Observed hinge design is not estimable'
                 continue
+            candidate_llfs[peak] = np.nan
             
             if coverage['N_Participants_Repeated'] >= 2:
                 mdf, optimizer, diagnostics = _fit_mixed_model(df_long)
@@ -295,6 +302,8 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             candidate_record['Mixed_Optimizer'] = optimizer
             candidate_record['Mixed_Fit_Diagnostics'] = diagnostics
             model_type = "Mixed-Effects"
+            if mdf is not None:
+                candidate_llfs[peak] = mdf.llf
             if mdf is None:
                 model_type = "Fixed-Effects"
                 try:
@@ -308,7 +317,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                 continue
 
             is_mixed = model_type == 'Mixed-Effects'
-            inference_status = ('Mixed-effects: nominal p-values' if is_mixed
+            inference_status = ('Mixed-effects: candidate coefficients are nominal only' if is_mixed
                                 else 'Descriptive only: repeated visits ignored')
 
             # Store this candidate's results, whether or not it wins.
@@ -316,7 +325,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                 'Model_Type': model_type,
                 'Inference_Status': inference_status,
                 'AIC': mdf.aic,
-                'Slope_2_Change_PValue': mdf.pvalues.get(
+                'Slope_2_Change_PValue_Nominal': mdf.pvalues.get(
                     'slope2_change', np.nan
                 ) if is_mixed else np.nan,
                 'Status': 'Fitted'
@@ -341,6 +350,12 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         if 'results' in best_model:
             res = best_model['results']
             is_mixed = best_model['model_type'] == 'Mixed-Effects'
+            test = unavailable_test(n_bootstrap, random_seed, 'Not tested: descriptive OLS fallback')
+            if is_mixed:
+                test = bootstrap_hinge_test(
+                    df_long, candidate_llfs, _fit_mixed_model, protein=protein,
+                    n_bootstrap=n_bootstrap, seed=random_seed, alpha=fdr_threshold,
+                )
             coverage_record['Status'] = 'Mixed-effects fitted' if is_mixed else 'Descriptive OLS fallback'
             slope1_coef = res.params.get('slope1', 0)
             slope2_change_coef = res.params.get('slope2_change', 0)
@@ -351,8 +366,10 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             all_results.append({
                 'Protein': protein,
                 **coverage,
+                **test,
                 'Model_Type': best_model['model_type'],
-                'Inference_Status': best_model['inference_status'],
+                'Inference_Status': ('Mixed-effects: search-adjusted inference' if np.isfinite(test['Hinge_Search_PValue'])
+                                     else 'Mixed-effects: search inference unavailable') if is_mixed else best_model['inference_status'],
                 'Mixed_Optimizer': best_model['optimizer'],
                 'Mixed_Fit_Diagnostics': best_model['diagnostics'],
                 'Best_Peak': best_peak_label,
@@ -362,8 +379,8 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                 'Slope_1_Gradient': slope1_coef,
                 'Slope_2_Gradient': slope1_coef + slope2_change_coef,
                 'Slope_2_Change': slope2_change_coef,
-                'Slope_1_PValue': res.pvalues.get('slope1', np.nan) if is_mixed else np.nan,
-                'Slope_2_Change_PValue': res.pvalues.get('slope2_change', np.nan) if is_mixed else np.nan,
+                'Slope_1_PValue_Nominal': res.pvalues.get('slope1', np.nan) if is_mixed else np.nan,
+                'Slope_2_Change_PValue_Nominal': res.pvalues.get('slope2_change', np.nan) if is_mixed else np.nan,
                 'Model_Converged': getattr(res, 'converged', 'N/A')             # fixed-effects/OLS models don't have convergence
             })
         else:
@@ -394,14 +411,15 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
 
     # Create and save the final results dataframe
-    df_results = pd.DataFrame(all_results)
-    df_results.sort_values(by='Slope_2_Change_PValue', ascending=True, inplace=True)    # Descriptive fallbacks have blank p-values and sort last.
+    df_results = adjust_hinge_fdr(pd.DataFrame(all_results), len(protein_cols), fdr_threshold)
+    df_results.sort_values(by=['Hinge_FDR', 'Hinge_Search_PValue'], kind='stable', inplace=True)
     output_filepath = os.path.join(output_dir, "hinge_model_results.xlsx")
 
     df_mixed_only = df_results[df_results['Model_Type'] == 'Mixed-Effects']
     df_fixed_only = df_results[df_results['Model_Type'] == 'Fixed-Effects']
-    top_proteins_to_plot = df_mixed_only.head(num_plots)
+    top_proteins_to_plot = df_mixed_only[df_mixed_only['Hinge_FDR'].notna()].head(num_plots)
     print(f"Mixed-effects results: {len(df_mixed_only)}; descriptive OLS fallbacks: {len(df_fixed_only)}.")
+    print(f"Proteins meeting BH FDR <= {fdr_threshold}: {int(df_results['Significant_FDR'].sum())}.")
 
 
     # Convert the candidate records into a table.
@@ -435,6 +453,8 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             writer, sheet_name='All_Candidate_Timepoints', index=False)
         top_proteins_to_plot.to_excel(
             writer, sheet_name='Top_Mixed_Models', index=False)
+        df_results[df_results['Significant_FDR']].to_excel(
+            writer, sheet_name='Significant_Hinges', index=False)
         df_coverage.to_excel(writer, sheet_name='Data_Coverage', index=False)
         df_time_coverage.to_excel(writer, sheet_name='Observed_By_Timepoint', index=False)
         analysis_info.to_excel(writer, sheet_name='Analysis_Info', index=False)
@@ -455,7 +475,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             os.replace(entry.path, os.path.join(archive_dir, entry.name))
         print(f"Previous hinge plots preserved in: {archive_dir}")
     
-    print(f"Creating plots for the top {len(top_proteins_to_plot)} mixed-effects models (based on nominal gradient change p-value)")
+    print(f"Creating plots for the top {len(top_proteins_to_plot)} mixed-effects models ranked by search-adjusted BH FDR (top-ranked does not imply significant)")
     for _, row in tqdm(top_proteins_to_plot.iterrows(), total=len(top_proteins_to_plot), desc="Generating plots"):
         protein_name = row['Protein']
         

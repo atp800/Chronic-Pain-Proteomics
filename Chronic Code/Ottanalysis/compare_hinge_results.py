@@ -23,10 +23,10 @@ def _read_hinge_results(path):
         sheet_name="All_Model_Results",
         dtype={"Protein": "string"},
     )
-    required = {"Protein", "Model_Type", "Slope_2_Change_PValue"}
+    required = {"Protein", "Model_Type", "Hinge_Search_PValue", "Hinge_FDR"}
     missing = required - set(results.columns)
     if missing:
-        raise ValueError(f"{path}: missing result columns {sorted(missing)}")
+        raise ValueError(f"{path}: missing corrected result columns {sorted(missing)}; rerun hinge analysis. Nominal p-values cannot be substituted.")
 
     results["Protein"] = results["Protein"].str.strip()
     if results["Protein"].fillna("").eq("").any():
@@ -34,17 +34,16 @@ def _read_hinge_results(path):
     if results["Protein"].duplicated().any():
         raise ValueError(f"{path}: duplicate protein identifiers found")
 
-    p_values = pd.to_numeric(
-        results["Slope_2_Change_PValue"], errors="raise"
-    )
-    if not p_values.dropna().between(0, 1).all():
-        raise ValueError(f"{path}: p-values must be between 0 and 1")
-    results["Slope_2_Change_PValue"] = p_values
-    # Older exports can contain OLS p-values. They cannot support this overlap.
+    for column in ("Hinge_Search_PValue", "Hinge_FDR"):
+        values = pd.to_numeric(results[column], errors="raise")
+        if not values.dropna().between(0, 1).all():
+            raise ValueError(f"{path}: {column} must be between 0 and 1")
+        results[column] = values
+    if (results.Hinge_FDR.notna() & (results.Hinge_Search_PValue.isna()
+                                    | results.Hinge_FDR.lt(results.Hinge_Search_PValue))).any():
+        raise ValueError(f"{path}: inconsistent search p-values and FDR values")
     fallback = ~results["Model_Type"].eq("Mixed-Effects")
-    for column in ("Slope_1_PValue", "Slope_2_Change_PValue"):
-        if column in results:
-            results.loc[fallback, column] = float("nan")
+    results.loc[fallback, ["Hinge_Search_PValue", "Hinge_FDR"]] = float("nan")
     return results
 
 
@@ -117,7 +116,7 @@ def compare_hinge_results(result_files, config=None):
         results = _read_hinge_results(paths[group])
         significant = results.loc[
             results["Model_Type"].eq("Mixed-Effects")
-            & (results["Slope_2_Change_PValue"] < threshold)
+            & (results["Hinge_FDR"] <= threshold)
         ]
         sheet_name = f"Group_{number}_Results"
         group_tables.append((sheet_name, results))
@@ -125,7 +124,7 @@ def compare_hinge_results(result_files, config=None):
             "Group": group,
             "Results_Sheet": sheet_name,
             "Result_File": str(paths[group]),
-            "Proteins_Tested": int(results["Slope_2_Change_PValue"].notna().sum()),
+            "Proteins_Tested": int(results["Hinge_Search_PValue"].notna().sum()),
             "Descriptive_Fallbacks": int(results["Model_Type"].eq("Fixed-Effects").sum()),
             "Significant_Proteins": len(significant),
         })
@@ -153,9 +152,10 @@ def compare_hinge_results(result_files, config=None):
         {"Setting": "SHEET_NAME", "Value": str(config.get("SHEET_NAME", ""))},
         {"Setting": "OUTPUT_FOLDER", "Value": str(config["OUTPUT_FOLDER"])},
         {"Setting": "P_THRESHOLD", "Value": threshold},
-        {"Setting": "P-value", "Value": "Selected mixed-effects model: Slope_2_Change_PValue (nominal)"},
+        {"Setting": "Significance", "Value": "Hinge_FDR: BH-adjusted whole-search bootstrap p-value"},
         {"Setting": "OLS fallbacks", "Value": "Descriptive only; excluded from significant overlap"},
-        {"Setting": "Overlap rule", "Value": "p < P_THRESHOLD in every selected group"},
+        {"Setting": "Overlap rule", "Value": "Hinge_FDR <= P_THRESHOLD in every selected group"},
+        {"Setting": "Interpretation", "Value": "Intersection of groupwise discoveries; not a direct test of differences between groups or FDR control for the intersection itself."},
         {"Setting": "Common proteins", "Value": len(common)},
     ])
 
@@ -174,7 +174,7 @@ def compare_hinge_results(result_files, config=None):
             results.to_excel(writer, sheet_name=sheet_name, index=False)
 
     print(
-        f"Hinge comparison: {len(common)} proteins with nominal p < {threshold} "
+        f"Hinge comparison: {len(common)} proteins with search-adjusted BH FDR <= {threshold} "
         f"in all {len(groups)} selected groups."
     )
     print(f"Saved: {output_file}")
