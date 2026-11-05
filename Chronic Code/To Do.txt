@@ -19,6 +19,7 @@ Important — improves validity or confidence in these results
 - #24 · Report the support behind each protein. Export observed participants per group, complete pairs, imputed proportions, residual degrees of freedom and effect confidence intervals. The limma eligibility fix now enforces minimum replication, but the workbook does not show those counts.
 - #26 · Check the stability of the final shortlist. Check whether leading proteins survive plausible missing-data treatments and omission of influential participants. For logistic regression, also check convergence because the code suppresses convergence warnings.
 - #10 · Old outputs can appear current after a skipped run. This matters particularly when rerunning limma after the eligibility fix. If an entire comparison is skipped, its previous workbook can remain visible.
+- New - A separate existing edge case surfaced during testing: nearly identical permutation AUCs can crash histogram plotting. That remains outside this fix.
 
 Extra — presentation and workflow
 - #5 · GUI control flow is awkward. Hinge-only runs still require unrelated comparison selections, and closing the window can allow the main script to continue.

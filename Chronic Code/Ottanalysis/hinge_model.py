@@ -2,8 +2,8 @@ from logging import config
 
 import pandas as pd
 import statsmodels.formula.api as smf
-from statsmodels.tools.sm_exceptions import ConvergenceWarning
 import os
+from tempfile import mkdtemp
 import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -16,7 +16,8 @@ import traceback
 
 
 '''
-Creates a mixed-effects hinge model for each protein (or fixed-effects as a fallback), trying multiple candidate peak days and selecting the best fit based on AIC:
+Creates a mixed-effects hinge model for each protein, selecting its candidate peak by AIC.
+If all mixed fits fail, retains an OLS fallback for description only:
 
 - finds an average peak (or trough) amongst participants 
 - creates an initial upward or downward slope to that that best fits the data from all participants 
@@ -35,21 +36,50 @@ Output should include (for each protein):
 '''
 
 
-# Suppress convergence warnings - handling failed models with try/except
-warnings.simplefilter('ignore', ConvergenceWarning)
+def _fit_mixed_model(df_long):
+    """Retry the same random-intercept model; return the first usable fit and its diagnostics."""
+    attempts = []
+    for optimizer in ("lbfgs", "bfgs", "cg"):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            try:
+                # Start each attempt afresh, including after singular-matrix errors.
+                model = smf.mixedlm(
+                    "value ~ slope1 + slope2_change", df_long,
+                    groups=df_long['subject_id_col']
+                )
+                result = model.fit(method=optimizer, reml=False, maxiter=200)
+                if not result.converged:
+                    raise ValueError("did not converge")
+                if not np.isfinite(result.aic) or not np.isfinite(result.params).all():
+                    raise ValueError("non-finite AIC or coefficients")
+                if not np.isfinite(result.bse_fe).all() or (result.bse_fe <= 0).any():
+                    raise ValueError("unusable fixed-effect standard errors")
+                if not np.isfinite(result.pvalues[['slope1', 'slope2_change']]).all():
+                    raise ValueError("non-finite slope p-values")
+            except Exception as exc:
+                result = None
+                status = f"{type(exc).__name__}: {exc}"
+            else:
+                status = "accepted"
+        warning_text = "; ".join(dict.fromkeys(str(item.message) for item in caught))
+        attempts.append(f"{optimizer}: {status}" + (f" [{warning_text}]" if warning_text else ""))
+        if result is not None:
+            return result, optimizer, "; ".join(attempts)
+    return None, None, "; ".join(attempts)
 
 
 
 
-def plot_best_fit(protein_name, df_long, best_peak, fit_results, output_path, subject_id_col, time_col, time_numeric, observed_means):
+def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_col, time_col, time_numeric, observed_means):
     """
     Generates and saves a plot visualizing the raw data and the fitted hinge model.
     """
-    # Extract coefficients
-    intercept = fit_results.params['Intercept']
-    slope1 = fit_results.params['slope1']
-    slope2_change = fit_results.params['slope2_change']
-    slope2 = slope1 + slope2_change
+    # Use the exported fit exactly; a plotting-time refit could fail or change it.
+    best_peak = model_result['Best_Peak_Numeric']
+    intercept = model_result['Intercept']
+    slope1 = model_result['Slope_1_Gradient']
+    slope2_change = model_result['Slope_2_Change']
     
 # Generate predicted values for the fixed effect line
     numeric_timepoints = sorted(df_long[time_numeric].unique())
@@ -97,8 +127,8 @@ def plot_best_fit(protein_name, df_long, best_peak, fit_results, output_path, su
     ax.set_xticklabels(tick_labels)
 
     ax.set_title(
-        f'Hinge Model for: {protein_name}\n'
-        f'(Best Fit AIC: {fit_results.aic:.2f})'
+        f'Mixed-Effects Hinge Model for: {protein_name}\n'
+        f'(Best Fit AIC: {model_result["AIC"]:.2f})'
     )
     ax.set_xlabel('Time')
     ax.set_ylabel('Log2 Abundance')
@@ -114,9 +144,10 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     Fits a mixed-effects hinge model for each protein
 
     For each protein, iterates through candidate peaks, selects the
-    best model based on AIC, and saves the results and visualisations.
+    best mixed model based on AIC, and saves the results and visualisations.
+    If no mixed fit succeeds, saves the best descriptive OLS fit without p-values.
     """
-    print("Creating hinge models (attempts mixed effects, falls back to fixed effects on failure)")
+    print("Creating hinge models (mixed-effects optimisers: lbfgs, bfgs, cg; OLS fallback is descriptive only)")
 
     if not protein_cols:
         print("Hinge analysis skipped: no protein columns found.")
@@ -190,7 +221,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             no_variance_count += 1
             continue
 
-        best_model = {'aic': float('inf')}
+        best_by_type = {}
 
         # Iterate through numeric candidate peaks to find the best fit
         for peak in candidate_peaks_numeric:
@@ -200,6 +231,9 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                 'Candidate_Time': time_label_map.get(peak, str(peak)),
                 'Candidate_Time_Numeric': peak,
                 'Model_Type': None,
+                'Inference_Status': 'Unavailable',
+                'Mixed_Optimizer': None,
+                'Mixed_Fit_Diagnostics': '',
                 'AIC': np.nan,
                 'Slope_2_Change_PValue': np.nan,
                 'Status': 'Fit failed'
@@ -218,88 +252,56 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             df_long['slope1'] = df_long['time_numeric'] - peak                            # Initial slope (before the peak)    - previously defined as time_numeric, now defined as relative to the peak to make th epredictors less correlated and improve model convergence
             df_long['slope2_change'] = (df_long['time_numeric'] - peak).clip(lower=0)
             
-            mdf = None
-            model_type = "None"
-
-
-            try:
-                ########## First attempt to fit mixed-effects model ############
-                md = smf.mixedlm(
-                    "value ~ slope1 + slope2_change",
-                    df_long,
-                    groups=df_long['subject_id_col']
-                )
-
-                mdf = md.fit(
-                    method=["lbfgs"],
-                    reml=False
-                )
-
-                if not mdf.converged:
-                    raise ValueError(
-                        "Mixed-effects model did not converge"
-                    )
-
-                if not np.isfinite(mdf.aic):
-                    raise ValueError(
-                        "Mixed-effects model produced non-finite AIC"
-                    )
-
-                model_type = "Mixed-Effects"
-
-            except (ValueError, ZeroDivisionError, Exception) as e:
-                # Silenced the print statement here so it doesn't spam your console 2000 times
-                # print(f"Could not fit mixed-effects model for {protein} at peak {peak}: {e}")
-                
+            mdf, optimizer, diagnostics = _fit_mixed_model(df_long)
+            candidate_record['Mixed_Optimizer'] = optimizer
+            candidate_record['Mixed_Fit_Diagnostics'] = diagnostics
+            model_type = "Mixed-Effects"
+            if mdf is None:
+                model_type = "Fixed-Effects"
                 try:
-                    ########## Fallback - attempt to fit fixed-effects (OLS) model ############
-                    md_ols = smf.ols("value ~ slope1 + slope2_change", data=df_long)
-                    mdf = md_ols.fit()
-                    
-                    # Also ensure OLS didn't return NaN
-                    if pd.isna(mdf.aic):
-                        continue
-                        
-                    model_type = "Fixed-Effects"
+                    mdf = smf.ols("value ~ slope1 + slope2_change", data=df_long).fit()
                 except Exception as e:
-                    # print(f"Could not fit fixed-effects model for {protein} at peak {peak}: {e}")
-                    continue    # skip to next candidate peak if both models fail
+                    candidate_record['Status'] = f'OLS also failed: {e}'
+                    continue
 
-            
-
-            # Only accept fits with a usable AIC.
-            if not np.isfinite(mdf.aic):
-                candidate_record['Status'] = 'Non-finite AIC'
+            if not np.isfinite(mdf.aic) or not np.isfinite(mdf.params).all():
+                candidate_record['Status'] = 'Non-finite AIC or coefficients'
                 continue
 
-            if model_type == 'Mixed-Effects' and not mdf.converged:
-                candidate_record['Status'] = 'Did not converge'
-                continue
+            is_mixed = model_type == 'Mixed-Effects'
+            inference_status = ('Mixed-effects: nominal p-values' if is_mixed
+                                else 'Descriptive only: repeated visits ignored')
 
             # Store this candidate's results, whether or not it wins.
             candidate_record.update({
                 'Model_Type': model_type,
+                'Inference_Status': inference_status,
                 'AIC': mdf.aic,
                 'Slope_2_Change_PValue': mdf.pvalues.get(
                     'slope2_change', np.nan
-                ),
+                ) if is_mixed else np.nan,
                 'Status': 'Fitted'
             })
 
-            # Check if current model is better than the previous best
-            if mdf.aic < best_model['aic']:
-                best_model = {
+            # Compare AIC only within model type. A fallback cannot displace a mixed fit.
+            if mdf.aic < best_by_type.get(model_type, {}).get('aic', float('inf')):
+                best_by_type[model_type] = {
                     'aic': mdf.aic,
                     'results': mdf,
                     'peak': peak,
-                    'model_type': model_type
+                    'model_type': model_type,
+                    'inference_status': inference_status,
+                    'optimizer': optimizer,
+                    'diagnostics': diagnostics,
                 }
 
 
         
         # Store the results of best fitting model for the protein
+        best_model = best_by_type.get('Mixed-Effects', best_by_type.get('Fixed-Effects', {}))
         if 'results' in best_model:
             res = best_model['results']
+            is_mixed = best_model['model_type'] == 'Mixed-Effects'
             slope1_coef = res.params.get('slope1', 0)
             slope2_change_coef = res.params.get('slope2_change', 0)
 
@@ -309,14 +311,18 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             all_results.append({
                 'Protein': protein,
                 'Model_Type': best_model['model_type'],
+                'Inference_Status': best_model['inference_status'],
+                'Mixed_Optimizer': best_model['optimizer'],
+                'Mixed_Fit_Diagnostics': best_model['diagnostics'],
                 'Best_Peak': best_peak_label,
                 'Best_Peak_Numeric': best_model['peak'],
                 'AIC': best_model['aic'],
+                'Intercept': res.params['Intercept'],
                 'Slope_1_Gradient': slope1_coef,
                 'Slope_2_Gradient': slope1_coef + slope2_change_coef,
                 'Slope_2_Change': slope2_change_coef,
-                'Slope_1_PValue': res.pvalues.get('slope1', 1),
-                'Slope_2_Change_PValue': res.pvalues.get('slope2_change', 1),
+                'Slope_1_PValue': res.pvalues.get('slope1', np.nan) if is_mixed else np.nan,
+                'Slope_2_Change_PValue': res.pvalues.get('slope2_change', np.nan) if is_mixed else np.nan,
                 'Model_Converged': getattr(res, 'converged', 'N/A')             # fixed-effects/OLS models don't have convergence
             })
         else:
@@ -373,11 +379,13 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
     # Create and save the final results dataframe
     df_results = pd.DataFrame(all_results)
-    df_results.sort_values(by='Slope_2_Change_PValue', ascending=True, inplace=True)    # Sort by the most significant hinge effect
+    df_results.sort_values(by='Slope_2_Change_PValue', ascending=True, inplace=True)    # Descriptive fallbacks have blank p-values and sort last.
     output_filepath = os.path.join(output_dir, "hinge_model_results.xlsx")
 
-    df_mixed_only = df_results[df_results['Model_Type'] == 'Mixed-Effects'][['Protein', 'Slope_2_Change_PValue']]  # Get list of proteins with fitted mixed-effects models
-    df_fixed_only = df_results[df_results['Model_Type'] == 'Fixed-Effects'][['Protein', 'Slope_2_Change_PValue']]  # Get list of proteins with fitted fixed-effects models
+    df_mixed_only = df_results[df_results['Model_Type'] == 'Mixed-Effects']
+    df_fixed_only = df_results[df_results['Model_Type'] == 'Fixed-Effects']
+    top_proteins_to_plot = df_mixed_only.head(num_plots)
+    print(f"Mixed-effects results: {len(df_mixed_only)}; descriptive OLS fallbacks: {len(df_fixed_only)}.")
 
 
     # Convert the candidate records into a table.
@@ -409,6 +417,8 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             writer, sheet_name='Mixed_Effects_Models', index=False)
         df_candidates.to_excel(
             writer, sheet_name='All_Candidate_Timepoints', index=False)
+        top_proteins_to_plot.to_excel(
+            writer, sheet_name='Top_Mixed_Models', index=False)
     print(f"\nHinge model results saved to: {output_filepath}")
 
 
@@ -416,39 +426,32 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     # Generate and save plots for the top N proteins
     plots_dir = os.path.join(output_dir, "Hinge_Model_Plots")
     os.makedirs(plots_dir, exist_ok=True)
+    # Preserve old generated plots without leaving earlier fallback fits in the current selection.
+    with os.scandir(plots_dir) as entries:
+        previous_plots = [entry for entry in entries
+                          if entry.is_file(follow_symlinks=False) and entry.name.endswith('_hinge_plot.png')]
+    if previous_plots:
+        archive_dir = mkdtemp(prefix='previous_', dir=plots_dir)
+        for entry in previous_plots:
+            os.replace(entry.path, os.path.join(archive_dir, entry.name))
+        print(f"Previous hinge plots preserved in: {archive_dir}")
     
-    top_proteins_to_plot = df_results.head(num_plots)
-    
-    print(f"Creating plots for the top {len(top_proteins_to_plot)} models (based on gradient change p-value)")
+    print(f"Creating plots for the top {len(top_proteins_to_plot)} mixed-effects models (based on nominal gradient change p-value)")
     for _, row in tqdm(top_proteins_to_plot.iterrows(), total=len(top_proteins_to_plot), desc="Generating plots"):
         protein_name = row['Protein']
-        best_peak = row['Best_Peak_Numeric']
         
         # Re-create the long dataframe for plotting
         df_plot_long = df_copy[['subject_id_col', time_col, 'time_numeric', protein_name]].copy()
         df_plot_long.rename(columns={protein_name: 'value'}, inplace=True)
         df_plot_long.dropna(inplace=True)
         
-        df_plot_long['slope1'] = df_plot_long['time_numeric'] - best_peak
-        df_plot_long['slope2_change'] = (df_plot_long['time_numeric'] - best_peak).clip(lower=0)
-        
-        # Re-fit the best models for plotting (better than storing whole models)
         try:
-            model_type = row['Model_Type']
-            if model_type == "Mixed-Effects":
-                md = smf.mixedlm("value ~ slope1 + slope2_change", df_plot_long, groups=df_plot_long['subject_id_col'])
-                mdf = md.fit(method=["lbfgs"], reml=False)
-            else:
-                md_ols = smf.ols("value ~ slope1 + slope2_change", data=df_plot_long)
-                mdf = md_ols.fit()
-
             plot_filename = f"{protein_name.replace('/', '_')}_hinge_plot.png"
             plot_filepath = os.path.join(plots_dir, plot_filename)
             
             plot_best_fit(protein_name, 
                           df_plot_long, 
-                          best_peak, 
-                          mdf, 
+                          row,
                           plot_filepath,
                           subject_id_col='subject_id_col',
                           time_col=time_col,
