@@ -10,13 +10,14 @@ import seaborn as sns
 from tqdm import tqdm
 from word2number import w2n
 import re
-from helpers import convert_timepoint_to_number, derive_subject_ids, impute_missing_vals
+from helpers import convert_timepoint_to_number, derive_subject_ids
 import numpy as np
 import traceback
 
 
 '''
 Creates a mixed-effects hinge model for each protein, selecting its candidate peak by AIC.
+Uses observed abundances only, retaining incomplete participants without imputation.
 If all mixed fits fail, retains an OLS fallback for description only:
 
 - finds an average peak (or trough) amongst participants 
@@ -82,7 +83,7 @@ def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_c
     slope2_change = model_result['Slope_2_Change']
     
 # Generate predicted values for the fixed effect line
-    numeric_timepoints = sorted(df_long[time_numeric].unique())
+    numeric_timepoints = sorted(set(df_long[time_numeric]) | {best_peak})
     pred_vals = []
     
     for t_num in numeric_timepoints:
@@ -98,12 +99,12 @@ def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_c
 
     # Plot individual participant data
     sns.lineplot(data=df_long, x=time_numeric, y='value', units=subject_id_col, estimator=None,
-                 color='grey', alpha=0.3, ax=ax, label='_nolegend_')
+                 color='grey', alpha=0.3, marker='o', markersize=3, ax=ax, label='_nolegend_')
 
     # Plot the fixed-effect (average) hinge model
     ax.plot(numeric_timepoints, pred_vals, 'r-', linewidth=3, label='Fitted Hinge Model (Average)')
 
-    # Plot observed sample means calculated before imputation.
+    # The participants contributing to each observed mean can differ across visits.
     ax.plot(
         observed_means.index,
         observed_means.to_numpy(),
@@ -112,7 +113,7 @@ def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_c
         marker='o',
         linewidth=2,
         markersize=6,
-        label='Observed Mean (Before Imputation)',
+        label='Observed Mean (Available Measurements)',
         zorder=4
     )
     
@@ -146,8 +147,10 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     For each protein, iterates through candidate peaks, selects the
     best mixed model based on AIC, and saves the results and visualisations.
     If no mixed fit succeeds, saves the best descriptive OLS fit without p-values.
+    Missing outcomes are omitted separately for each protein; incomplete participants remain.
     """
     print("Creating hinge models (mixed-effects optimisers: lbfgs, bfgs, cg; OLS fallback is descriptive only)")
+    print("Using observed protein measurements only; missing abundances are not imputed.")
 
     if not protein_cols:
         print("Hinge analysis skipped: no protein columns found.")
@@ -171,21 +174,14 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         print(f"Dropped rows where time couldn't be extracted - try reformating to timepoints to integers: {failed_conversions}")
         df_copy.dropna(subset=['time_numeric'], inplace=True)
 
-    # Calculate observed means at each time point before imputation.
+    # Non-finite abundances are missing outcomes, not artificial low abundances.
+    df_copy[protein_cols] = df_copy[protein_cols].replace([np.inf, -np.inf], np.nan)
     # Missing measurements are excluded separately for each protein.
     observed_means = (
         df_copy
         .groupby('time_numeric')[protein_cols]
         .mean()
         .sort_index()
-    )
-
-    # Impute missing values in protein columns (imputes within subject)
-    df_copy[protein_cols] = (
-        df_copy
-        .groupby('subject_id_col')[protein_cols]
-        .apply(impute_missing_vals)
-        .reset_index(level=0, drop=True)
     )
 
     # Convert candidate peaks
@@ -197,29 +193,57 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
     all_results = []
     all_candidate_results = []
+    all_coverage = []
+    coverage_by_time = []
+    analysis_info = pd.DataFrame([
+        {'Setting': 'Missing outcomes', 'Value': 'Observed finite abundances only; no imputation. Incomplete participants retained.'},
+        {'Setting': 'Mixed-model replication', 'Value': 'At least two participants with observations at two or more distinct times. This is a minimum safeguard, not a guarantee of precision.'},
+        {'Setting': 'Candidate comparison', 'Value': 'All candidate hinges for a protein use the same observed rows; AIC compared within model type.'},
+        {'Setting': 'Missingness assumption', 'Value': 'Likelihood inference assumes missing at random given the model. Abundance-dependent non-detection may still bias estimates.'},
+        {'Setting': 'P-values', 'Value': 'Mixed-model p-values are nominal; OLS fallbacks are descriptive only.'},
+    ])
 
     # Map numeric times back to their original labels, such as "D7".
     time_label_map = dict(
         zip(df_copy['time_numeric'], df_copy[time_col])
     )
     
-    failed_protein_count = 0        # number of proteins where code fails to fit mixed effects model
-    no_variance_count = 0
+    failed_protein_count = 0
 
     # Use tqdm for a progress bar
     for protein in tqdm(protein_cols, desc="Processing proteins"):
         df_long = df_copy[['subject_id_col', time_col, 'time_numeric', protein]].copy()            # reformat dataframe to long format
         df_long.rename(columns={protein: 'value'}, inplace=True)                    # rename the protein column to a generic name for modelling
-        df_long.dropna(subset=['value', 'time_numeric'], inplace=True)                    # drop columns where time or protein emasurment is missing
-        
-        if df_long['time_numeric'].nunique() < 3: # Need at least 3 unique time points
-            print(f"Skipping {protein} - not enough unique time points to fit a hinge model")
-            continue
+        counts_by_time = df_long.groupby('time_numeric')['value'].agg(['count', 'size'])
+        counts_by_time = counts_by_time.rename(columns={'count': 'N_Observed', 'size': 'N_Recorded_Visits'})
+        counts_by_time['N_Missing'] = counts_by_time['N_Recorded_Visits'] - counts_by_time['N_Observed']
+        counts_by_time['Time_Label'] = counts_by_time.index.map(time_label_map)
+        counts_by_time.insert(0, 'Protein', protein)
+        coverage_by_time.append(counts_by_time.reset_index())
 
-        if df_long['value'].std() == 0:
-            print(f"Skipping {protein} - no variance")
-            no_variance_count += 1
-            continue
+        # Keep every available measurement, including a participant's lone observation.
+        # The identical observed rows are used for every candidate, optimiser and fallback.
+        df_long.dropna(subset=['value', 'time_numeric'], inplace=True)
+        observations_per_person = df_long.groupby('subject_id_col').size()
+        times_per_person = df_long.groupby('subject_id_col')['time_numeric'].nunique()
+        coverage = {
+            'N_Observed': len(df_long),
+            'N_Missing': len(df_copy) - len(df_long),
+            'N_Participants_Observed': len(observations_per_person),
+            'N_Participants_Repeated': int(times_per_person.ge(2).sum()),
+            'N_Participants_Single_Observation': int(observations_per_person.eq(1).sum()),
+            'N_Participants_Unobserved': df_copy['subject_id_col'].nunique() - len(observations_per_person),
+            'N_Observed_Timepoints': df_long['time_numeric'].nunique(),
+        }
+        coverage_record = {'Protein': protein, **coverage, 'Status': 'No usable candidate fit'}
+        all_coverage.append(coverage_record)
+        protein_issue = None
+        if coverage['N_Observed_Timepoints'] < 3:
+            protein_issue = 'Fewer than three observed time points'
+        elif coverage['N_Observed'] <= 3:
+            protein_issue = 'Insufficient observed residual degrees of freedom'
+        elif df_long['value'].nunique() < 2:
+            protein_issue = 'No observed abundance variation'
 
         best_by_type = {}
 
@@ -228,6 +252,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             # Create the row before fitting so failed candidates remain visible - a failed fit leaves a visible row with a blank p-value
             candidate_record = {
                 'Protein': protein,
+                **coverage,
                 'Candidate_Time': time_label_map.get(peak, str(peak)),
                 'Candidate_Time_Numeric': peak,
                 'Model_Type': None,
@@ -240,6 +265,11 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             }
             all_candidate_results.append(candidate_record)
 
+            if protein_issue:
+                candidate_record['Status'] = protein_issue
+                coverage_record['Status'] = protein_issue
+                continue
+
             # A hinge requires measurements on both sides.
             earliest_time = df_long['time_numeric'].min()
             latest_time = df_long['time_numeric'].max()
@@ -251,8 +281,17 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
             df_long['slope1'] = df_long['time_numeric'] - peak                            # Initial slope (before the peak)    - previously defined as time_numeric, now defined as relative to the peak to make th epredictors less correlated and improve model convergence
             df_long['slope2_change'] = (df_long['time_numeric'] - peak).clip(lower=0)
+
+            design = np.column_stack([np.ones(len(df_long)), df_long['slope1'], df_long['slope2_change']])
+            if np.linalg.matrix_rank(design) < 3:
+                candidate_record['Status'] = 'Observed hinge design is not estimable'
+                continue
             
-            mdf, optimizer, diagnostics = _fit_mixed_model(df_long)
+            if coverage['N_Participants_Repeated'] >= 2:
+                mdf, optimizer, diagnostics = _fit_mixed_model(df_long)
+            else:
+                mdf, optimizer = None, None
+                diagnostics = 'Mixed fit not attempted: fewer than two participants with repeated observed measurements'
             candidate_record['Mixed_Optimizer'] = optimizer
             candidate_record['Mixed_Fit_Diagnostics'] = diagnostics
             model_type = "Mixed-Effects"
@@ -302,6 +341,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         if 'results' in best_model:
             res = best_model['results']
             is_mixed = best_model['model_type'] == 'Mixed-Effects'
+            coverage_record['Status'] = 'Mixed-effects fitted' if is_mixed else 'Descriptive OLS fallback'
             slope1_coef = res.params.get('slope1', 0)
             slope2_change_coef = res.params.get('slope2_change', 0)
 
@@ -310,6 +350,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             
             all_results.append({
                 'Protein': protein,
+                **coverage,
                 'Model_Type': best_model['model_type'],
                 'Inference_Status': best_model['inference_status'],
                 'Mixed_Optimizer': best_model['optimizer'],
@@ -330,48 +371,23 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             print(f"Failed to fit any model for {protein} - skipping. Total failed so far: {failed_protein_count}")
 
 
-    # Results print statements
+    df_coverage = pd.DataFrame(all_coverage)
+    df_time_coverage = pd.concat(coverage_by_time, ignore_index=True)
+
     if not all_results:
-        print("Hinge model analysis finished, but no valid models could be fitted")
-        ############ DIAGNOSTICS #####################
-        print(f"{no_variance_count} proteins were skipped due to no variance in measurements")
-        print(f"Number of unique subjects: {df_copy['subject_id_col'].nunique()}")
-
-        print("NaNs:", df_long.isna().sum())
-        print("Unique times:", df_long['time_numeric'].unique())
-        print("Subjects:", df_long['subject_id_col'].nunique())
-        print("Value std:", df_long['value'].std())
-        ###############################################
-        # If no valid models were fitted, still save the candidate diagnostics for inspection:
-        if all_candidate_results:
-            diagnostic_path = os.path.join(
-                output_dir,
-                "hinge_candidate_diagnostics.xlsx"
-            )
-
-            df_diagnostics = pd.DataFrame(all_candidate_results)
-            df_diagnostics['Is_Best_Hinge'] = False
-
-            df_diagnostics.to_excel(
-                diagnostic_path,
-                sheet_name='All_Candidate_Timepoints',
-                index=False,
-                engine='xlsxwriter'
-            )
-
-            print(f"All fittings failed. Candidate diagnostics saved to: {diagnostic_path}")
+        print("Hinge model analysis finished, but no usable models could be fitted to the observed data.")
+        diagnostic_path = os.path.join(output_dir, "hinge_candidate_diagnostics.xlsx")
+        df_diagnostics = pd.DataFrame(all_candidate_results)
+        df_diagnostics['Is_Best_Hinge'] = False
+        with pd.ExcelWriter(diagnostic_path, engine='xlsxwriter') as writer:
+            df_diagnostics.to_excel(writer, sheet_name='All_Candidate_Timepoints', index=False)
+            df_coverage.to_excel(writer, sheet_name='Data_Coverage', index=False)
+            df_time_coverage.to_excel(writer, sheet_name='Observed_By_Timepoint', index=False)
+            analysis_info.to_excel(writer, sheet_name='Analysis_Info', index=False)
+        print(f"Coverage and candidate diagnostics saved to: {diagnostic_path}")
         return
     if failed_protein_count > 0:
-        print(f"\nNote: {failed_protein_count} proteins were skipped as no model (mixed or fixed) could be fitted.")
-        ############ DIAGNOSTICS #####################
-        print(f"{no_variance_count} proteins were skipped due to no variance in measurements")
-        print(f"Number of unique subjects: {df_copy['subject_id_col'].nunique()}")
-
-        print("NaNs:", df_long.isna().sum())
-        print("Unique times:", df_long['time_numeric'].unique())
-        print("Subjects:", df_long['subject_id_col'].nunique())
-        print("Value std:", df_long['value'].std())
-        ############################################### 
+        print(f"\nNote: {failed_protein_count} proteins had insufficient observed data or no usable fit; see Data_Coverage and All_Candidate_Timepoints.")
     else:
         print("\nHinge model analysis finished with successful fits for all proteins")
 
@@ -419,6 +435,9 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             writer, sheet_name='All_Candidate_Timepoints', index=False)
         top_proteins_to_plot.to_excel(
             writer, sheet_name='Top_Mixed_Models', index=False)
+        df_coverage.to_excel(writer, sheet_name='Data_Coverage', index=False)
+        df_time_coverage.to_excel(writer, sheet_name='Observed_By_Timepoint', index=False)
+        analysis_info.to_excel(writer, sheet_name='Analysis_Info', index=False)
     print(f"\nHinge model results saved to: {output_filepath}")
 
 

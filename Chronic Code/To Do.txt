@@ -7,9 +7,9 @@ Critical — can invalidate a result from your planned analyses
 - FIXED - #15 · The logistic permutation p-value omits feature selection and tuning. In all four comparisons, the test reuses choices made with the real labels. A valid test of the full procedure must repeat those choices under each permutation.
 - FIXED - #2 · Small logistic groups can produce a false significance claim. If a class has fewer than five observations, five-fold AUC can be undefined. In the reproduced eight-versus-four example, every AUC was undefined but the code still reported p = 0.0099. Whether this occurs in your runs depends on the actual class counts.
 - FIXED - #16 · Logistic Significant CI flags can falsely identify proteins as significant. The intervals describe stability after preprocessing, tuning and selection. Using those flags to declare individual biomarkers significant is unsupported.
+- FIXED - #12 · Hinge fallback fits ignore repeated visits. This remains relevant despite your matching IDs. Rows marked Fixed-Effects treat one person’s visits as independent, making their slope-change p-values unreliable. This issue does not affect the four limma comparisons as specified.
+- FIXED - #17 · Hinge imputation can manufacture a trajectory. Complete attendance does not guarantee complete measurements for each protein. If a participant has only one observed abundance for a protein, the code fills their other visits with zero and fits the resulting trajectory as observed data.
 
-- #12 · Hinge fallback fits ignore repeated visits. This remains relevant despite your matching IDs. Rows marked Fixed-Effects treat one person’s visits as independent, making their slope-change p-values unreliable. This issue does not affect the four limma comparisons as specified.
-- #17 · Hinge imputation can manufacture a trajectory. Complete attendance does not guarantee complete measurements for each protein. If a participant has only one observed abundance for a protein, the code fills their other visits with zero and fits the resulting trajectory as observed data.
 - #19 · Hinge significance does not account for the search across days and proteins. Choosing the lowest-AIC day and reporting its ordinary p-value overstates evidence for a bend. Prespecifying D14 as the sole candidate removes the day-search problem. Testing many proteins still requires multiple-testing control.
 
 Important — improves validity or confidence in these results
@@ -44,6 +44,8 @@ Interpretation and combining results — no code change inherently required
 
 WRITE UP
 - Update methodlogy seciton of manuscript to refelct any changes
+- Full readme of code
+- Improved descriptive comments
 - Easy to understand write up to explain code for Pauline
 
 NOTES
