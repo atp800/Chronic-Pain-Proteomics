@@ -12,12 +12,11 @@ Critical — can invalidate a result from your planned analyses
 - FIXED - #19 · Hinge significance does not account for the search across days and proteins. Choosing the lowest-AIC day and reporting its ordinary p-value overstates evidence for a bend. Prespecifying D14 as the sole candidate removes the day-search problem. Testing many proteins still requires multiple-testing control.
 
 Important — improves validity or confidence in these results
+- FIXED - #20 · Hinge AIC can favour fallback fits. If some candidate days use mixed models and others use ordinary regression, inconsistent parameter counting gives ordinary regression a two-point AIC advantage. This matters when comparing candidate days with different model types.
 - #3 · Logistic coefficient direction can contradict the comparison name. With your example labels T0 and D14, positive coefficients predict T0. With NonResp and Resp, they predict Resp. The same positive-class choice determines F1.
 - #6 · The GUI can clear covariate and ignored-column selections. If your workbook contains numeric metadata beyond the designated ID, group and time columns, a cleared selection can turn metadata into apparent proteins or remove intended adjustment.
-- #20 · Hinge AIC can favour fallback fits. If some candidate days use mixed models and others use ordinary regression, inconsistent parameter counting gives ordinary regression a two-point AIC advantage. This matters when comparing candidate days with different model types.
 - #24 · Report the support behind each protein. Export observed participants per group, complete pairs, imputed proportions, residual degrees of freedom and effect confidence intervals. The limma eligibility fix now enforces minimum replication, but the workbook does not show those counts.
 - #26 · Check the stability of the final shortlist. Check whether leading proteins survive plausible missing-data treatments and omission of influential participants. For logistic regression, also check convergence because the code suppresses convergence warnings.
-- #10 · Old outputs can appear current after a skipped run. This matters particularly when rerunning limma after the eligibility fix. If an entire comparison is skipped, its previous workbook can remain visible.
 - New - A separate existing edge case surfaced during testing: nearly identical permutation AUCs can crash histogram plotting. That remains outside this fix.
 
 Extra — presentation and workflow
@@ -39,6 +38,7 @@ Interpretation and combining results — no code change inherently required
 - #22 · Hinge is a separate full-trajectory analysis. It uses all available visits for the selected hinge groups, independently of the limma/logistic comparison tab. Running hinge alongside each of the four comparisons with identical hinge settings repeats the same analysis. Its overlap table identifies proteins with bends in both groups, potentially on different days or in opposite directions. A participant-aware group-by-time interaction would test whether the trajectories differ.
 - #21 · Covariate adjustment differs by method. Only limma uses the selected covariates. Its paired participant effects already absorb time-invariant participant characteristics. Agreement between limma, hinge and logistic results therefore does not imply identical covariate adjustment.
 - #25 · Define what qualifies a protein for the combined shortlist. Limma adjusts across proteins within each contrast. If significance in any comparison or fraction earns a place, account for that wider search. The four comparisons reuse participants and measurements, so overlap is not independent replication. If the claim requires a true effect exceeding 0.58 log2 units, limma’s treat tests that threshold directly.
+- #10 · Old outputs can appear current after a skipped run. This matters particularly when rerunning limma after the eligibility fix. If an entire comparison is skipped, its previous workbook can remain visible.
 
 
 WRITE UP
