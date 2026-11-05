@@ -98,7 +98,8 @@ def run_statistical_tests(df_subset, group_col, baseline_name, compare_name, rel
             compare_name,
             logistic_dir,
             delta_visits=delta_visits,
-            participant_ids=participant_ids
+            participant_ids=participant_ids,
+            n_permutations=CONFIG.get("LOGISTIC_PERMUTATIONS", 9999),
         )
 
 ################################################
@@ -266,7 +267,7 @@ if CONFIG.get("RUN_HINGE", False):
             num_plots=CONFIG["HINGE_NUM_PLOTS"],
             output_dir=output_subfolder,
             subject_id_delimiter=CONFIG.get("ID_DELIMITER", "-"),
-            n_bootstrap=CONFIG.get("HINGE_BOOTSTRAP_SIMULATIONS", 9999),
+            n_bootstrap=CONFIG.get("HINGE_BOOTSTRAP_SIMULATIONS", 99999),
             random_seed=CONFIG.get("HINGE_BOOTSTRAP_SEED", 42),
             fdr_threshold=CONFIG.get("P_THRESHOLD", 0.05),
         )

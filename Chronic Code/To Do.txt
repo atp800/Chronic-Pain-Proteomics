@@ -16,21 +16,21 @@ Important — improves validity or confidence in these results
 - FIXED - #3 · Logistic coefficient direction can contradict the comparison name. With your example labels T0 and D14, positive coefficients predict T0. With NonResp and Resp, they predict Resp. The same positive-class choice determines F1.
 - FIXED - New · A separate existing edge case surfaced during testing: nearly identical permutation AUCs can crash histogram plotting.
 - FIXED - #6 · The GUI can clear covariate and ignored-column selections. If your workbook contains numeric metadata beyond the designated ID, group and time columns, a cleared selection can turn metadata into apparent proteins or remove intended adjustment.
-- FIXED - #24 · Report the support behind each protein. Export observed participants per group, complete pairs, imputed proportions, residual degrees of freedom and effect confidence intervals. The limma eligibility fix now enforces minimum replication, but the workbook does not show those counts.
-
+- FIXED - #24 · Report the support behind each protein from limma. Export observed participants per group, complete pairs, imputed proportions, residual degrees of freedom and effect confidence intervals. The limma eligibility fix now enforces minimum replication, but the workbook does not show those counts.
 - #26 · Check the stability of the final shortlist. Check whether leading proteins survive plausible missing-data treatments and omission of influential participants. For logistic regression, also check convergence because the code suppresses convergence warnings.
 
 Extra — presentation and workflow
 - #5 · GUI control flow is awkward. Hinge-only runs still require unrelated comparison selections, and closing the window can allow the main script to continue.
 - #9 · Plots can disagree with their tables. The volcano plot uses a fixed 0.05 line, and the logistic coefficient plot can misdraw an interval endpoint. The underlying tables retain the calculated values.
 - #7 · Unused settings and placeholder features. The protein-column, log2 and normalisation settings have no effect, and the PCA and Spearman switches run no analysis. These are low priority if your inputs are already prepared and protein columns are correctly identified.
+- #10 · Old outputs can appear current after a skipped run. This matters particularly when rerunning limma after the eligibility fix. If an entire comparison is skipped, its previous workbook can remain visible.
 
 Relevant to other datasets or analysis settings
+- FIXED - #18 · An entirely absent visit can become an invented logistic delta. This requires a missing baseline or follow-up sample row. With both rows present for every participant, this specific failure does not apply. Individual missing protein values can still be imputed before subtraction.
 - #1 · Headless delta mode without a follow-up. Raw abundances can be reported as deltas if the GUI is disabled and no follow-up is specified. Your explicit T0-to-D14 selection avoids this path.
 - #4 · Numeric visit labels can break delta lookup. This affects Excel visits stored as numbers such as 0 and 14. Your text labels T0 and D14 avoid it. The earlier limma contrast-name problem was removed by the direct-fit change.
 - #8 · R installation and rpy2 compatibility. Startup requires R even for non-limma runs, and the conversion call is incompatible with rpy2 3.6. This becomes relevant if you change environments.
 - #12 · Pooled group limma ignores participant identity. This applies if you leave the visit selection blank and combine all visits. Your separate baseline and D14 comparisons avoid it.
-- #18 · An entirely absent visit can become an invented logistic delta. This requires a missing baseline or follow-up sample row. With both rows present for every participant, this specific failure does not apply. Individual missing protein values can still be imputed before subtraction.
 - #21 · Delta mode takes covariates from the first source row. This matters if you select a covariate that changes between visits, such as assay batch. It is immaterial for covariates that are constant within each participant.
 
 Interpretation and combining results — no code change inherently required
@@ -39,7 +39,6 @@ Interpretation and combining results — no code change inherently required
 - #22 · Hinge is a separate full-trajectory analysis. It uses all available visits for the selected hinge groups, independently of the limma/logistic comparison tab. Running hinge alongside each of the four comparisons with identical hinge settings repeats the same analysis. Its overlap table identifies proteins with bends in both groups, potentially on different days or in opposite directions. A participant-aware group-by-time interaction would test whether the trajectories differ.
 - #21 · Covariate adjustment differs by method. Only limma uses the selected covariates. Its paired participant effects already absorb time-invariant participant characteristics. Agreement between limma, hinge and logistic results therefore does not imply identical covariate adjustment.
 - #25 · Define what qualifies a protein for the combined shortlist. Limma adjusts across proteins within each contrast. If significance in any comparison or fraction earns a place, account for that wider search. The four comparisons reuse participants and measurements, so overlap is not independent replication. If the claim requires a true effect exceeding 0.58 log2 units, limma’s treat tests that threshold directly.
-- #10 · Old outputs can appear current after a skipped run. This matters particularly when rerunning limma after the eligibility fix. If an entire comparison is skipped, its previous workbook can remain visible.
 
 
 WRITE UP

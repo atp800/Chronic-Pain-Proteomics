@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.backends.backend_pdf import PdfPages
 import warnings
+from numbers import Integral
 from sklearn.exceptions import ConvergenceWarning
 
 from sklearn.preprocessing import StandardScaler
@@ -33,6 +34,9 @@ print(f"scikit-learn version: {sklearn_version}")
 
 # Suppress the max_iter ConvergenceWarnings from scikit-learn
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
+# Monte Carlo draws; repeated assignments reuse the same fitted validation score.
+DEFAULT_PERMUTATIONS = 9999
 
 # Preserve the original search values and tie order (ascending C within each L1 ratio).
 _PARAMETER_GRID = [
@@ -171,9 +175,10 @@ def _pooled_auc(y, probabilities):
     return roc_auc_score(y, probabilities[:, 1])
 
 
-def _nested_permutation_test(X, y, delta, participant_ids, observed_auc, *, n_permutations=100):
+def _nested_permutation_test(X, y, delta, participant_ids, observed_auc, *, n_permutations=DEFAULT_PERMUTATIONS):
     """Compare the observed pooled held-out AUC with the same procedure under shuffled labels."""
-    if not np.isfinite(observed_auc) or n_permutations < 1:
+    if (not np.isfinite(observed_auc) or isinstance(n_permutations, bool)
+            or not isinstance(n_permutations, Integral) or n_permutations < 1):
         raise ValueError("A finite observed AUC and at least one permutation are required.")
     rng = np.random.RandomState(42)
     pairs = None if participant_ids is None else _participant_pairs(participant_ids)
@@ -206,7 +211,7 @@ def _nested_permutation_test(X, y, delta, participant_ids, observed_auc, *, n_pe
 
 
 def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, compare_name, output_dir,
-                            *, delta_visits=None, participant_ids=None):
+                            *, delta_visits=None, participant_ids=None, n_permutations=DEFAULT_PERMUTATIONS):
     """Model comparison (1) versus baseline (0).
 
     For longitudinal visits, pass participant IDs indexed like df_subset.
@@ -215,6 +220,8 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     print("\n------------------------------------------------------------------")
     print(f"Running Logistic Regression avec: {compare_name} vs {baseline_name}")
     print("------------------------------------------------------------------")
+    if isinstance(n_permutations, bool) or not isinstance(n_permutations, Integral) or n_permutations < 1:
+        raise ValueError("Logistic permutations must be a positive integer.")
     
     y = df_subset[group_col]
     delta = delta_visits is not None
@@ -324,16 +331,18 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
         'Reference Observations': class_counts[0], 'Positive Observations': class_counts[1],
         'Validation': cv_label, 'ROC AUC': observed_auc, 'Accuracy': accuracy,
         'F1 (Positive Class)': f1,
+        'Permutation Draws Requested': n_permutations,
     }]).to_csv(performance_path, index=False)
     print(f"Saved class mapping and performance metrics to: {performance_path}")
 
 
-    print("\nPermutation test of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.")
+    print(f"\nPermutation test: {n_permutations} draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.")
     if paired:
         print("Swapping visit labels only within participants, with participant-held-out validation.")
     permutation_scores = None
     try:
-        permutation_scores, pvalue = _nested_permutation_test(X, y_encoded, delta, participant_ids, observed_auc)
+        permutation_scores, pvalue = _nested_permutation_test(X, y_encoded, delta, participant_ids, observed_auc,
+                                                            n_permutations=n_permutations)
     except ValueError as exc:
         print(f"\nPermutation result unavailable: {exc}")
     else:

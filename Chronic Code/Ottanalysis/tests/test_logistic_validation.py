@@ -157,7 +157,7 @@ class LogisticValidationTests(unittest.TestCase):
             swaps.append(changed.any() and not changed.all())
             return fit_features(transformer, X, y)
 
-        def run_permutations(X, y, delta, ids, observed_auc):
+        def run_permutations(X, y, delta, ids, observed_auc, **kwargs):
             observed_aucs.append(observed_auc)
             self.assertTrue(X.index.equals(eligible_ids.index))
             np.testing.assert_array_equal(ids, eligible_ids.to_numpy())
@@ -234,7 +234,7 @@ class LogisticValidationTests(unittest.TestCase):
             return np.column_stack([1 - positive, positive])
 
         with patch.object(logistic, "_leave_one_out_probabilities", side_effect=predict) as fit:
-            scores, pvalue = logistic._nested_permutation_test(self.X.iloc[:6], y, False, ids, 1.)
+            scores, pvalue = logistic._nested_permutation_test(self.X.iloc[:6], y, False, ids, 1., n_permutations=100)
         self.assertEqual(len(scores), 100)
         self.assertEqual(set(scores), {0., 1.})
         self.assertEqual(fit.call_count, 7)  # eight possible assignments, observed score already known
@@ -365,7 +365,7 @@ class LogisticValidationTests(unittest.TestCase):
         }, index=[18, 2, 35, 7, 41, 5, 11])
         common = dict(LAUNCH_GUI=False, ID_DELIMITER="|", ID_COLUMN="Sample_ID", CONDITION_COLUMN="Condition",
                       TIME_COLUMN="Time_Point", COVARIATE_COLUMNS=[], UNNEEDED_COLUMNS=[],
-                      RUN_LIMMA=False, RUN_LOGISTIC_REGRESSION=True, RUN_HINGE=False)
+                      RUN_LIMMA=False, RUN_LOGISTIC_REGRESSION=True, RUN_HINGE=False, LOGISTIC_PERMUTATIONS=1234)
         cases = [("LONGITUDINAL", ["Resp"], "T0", ["D14"]), ("GROUP_COMPARISON", ["T0", "D14"], "NonResp", ["Resp"])]
         for mode, loops, base, targets in cases:
             with (self.subTest(mode=mode), patch.dict(CONFIG, common, ANALYSIS_MODE=mode, BASELINE_VAL=base,
@@ -376,6 +376,7 @@ class LogisticValidationTests(unittest.TestCase):
                 runpy.run_path(str(Path(__file__).resolve().parents[1] / "main.py"))
                 self.assertEqual(classifier.call_count, len(loops))
                 for call in classifier.call_args_list:
+                    self.assertEqual(call.kwargs['n_permutations'], 1234)
                     ids = call.kwargs["participant_ids"]
                     self.assertEqual(call.args[2], ["p"])
                     if mode == "LONGITUDINAL":

@@ -36,7 +36,7 @@ class ProteomicsGUI:
         self.v_delta_base_grp = tk.StringVar()
 
         self.v_hinge_num_plots = tk.IntVar(value=CONFIG.get("HINGE_NUM_PLOTS", 20))
-        self.v_hinge_bootstraps = tk.IntVar(value=CONFIG.get("HINGE_BOOTSTRAP_SIMULATIONS", 9999))
+        self.v_hinge_bootstraps = tk.IntVar(value=CONFIG.get("HINGE_BOOTSTRAP_SIMULATIONS", 99999))
         
         # Test Variables
         self.v_run_limma = tk.BooleanVar(value=CONFIG.get("RUN_LIMMA", True))

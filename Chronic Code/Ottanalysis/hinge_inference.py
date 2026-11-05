@@ -15,7 +15,7 @@ from statsmodels.stats.multitest import multipletests
 from tqdm import tqdm
 
 
-DEFAULT_BOOTSTRAPS = 9999
+DEFAULT_BOOTSTRAPS = 99999
 DEFAULT_SEED = 42
 
 

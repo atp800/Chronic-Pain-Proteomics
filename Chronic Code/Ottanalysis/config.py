@@ -33,8 +33,10 @@ CONFIG = {
     "HINGE_PEAK_CANDIDATES": [],
     "HINGE_GROUPS_TO_RUN": [],
     "HINGE_NUM_PLOTS": 20,
-    "HINGE_BOOTSTRAP_SIMULATIONS": 9999,
+    # Minimum Monte Carlo p = 1e-5, allowing an isolated discovery among ~2,120 proteins.
+    "HINGE_BOOTSTRAP_SIMULATIONS": 99999,
     "HINGE_BOOTSTRAP_SEED": 42,
+    "LOGISTIC_PERMUTATIONS": 9999,  # More precise model-level permutation p-values.
     # "DELTA_COMPARISON": None,
     # "REPLACE_VALS_WITH_DELTAS": True,
     # "LIMMA_IS_PAIRED": False,
