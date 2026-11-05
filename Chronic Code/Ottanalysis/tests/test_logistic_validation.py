@@ -170,6 +170,10 @@ class LogisticValidationTests(unittest.TestCase):
               patch.object(logistic, "_bootstrap_rows", wraps=logistic._bootstrap_rows) as bootstrap):
             logistic.run_logistic_regression(data, "visit", ["signal"], 0, 1, output, participant_ids=self.participants)
             np.testing.assert_array_equal(bootstrap.call_args.args[1], eligible_ids.to_numpy())
+            exported = pd.read_csv(Path(output) / "LogReg_1_vs_0_Features.csv")
+            self.assertIn("Bootstrap 2.5th Percentile", exported)
+            self.assertIn("Bootstrap 97.5th Percentile", exported)
+            self.assertNotIn("Significant CI", exported)
             self.assertTrue((Path(output) / "LogReg_1_vs_0_Plots.pdf").is_file())
             self.assertEqual(observed_aucs, [roc_auc_score(*plotted_roc.call_args.args)])
             self.assertIn("Nested CV permutation p-value (5 draws)", self.output.getvalue())

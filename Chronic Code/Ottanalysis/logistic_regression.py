@@ -113,6 +113,45 @@ def _bootstrap_rows(y, participant_ids, n_iterations):
         yield resample(units, replace=True, stratify=strata, random_state=seed).ravel()
 
 
+def _coefficient_stability_table(protein_names, original_coefs, bootstrap_coefs):
+    """Summarise all bootstrap draws for proteins with a nonzero full-data coefficient."""
+    selected = original_coefs != 0
+    lower, upper = np.percentile(bootstrap_coefs, [2.5, 97.5], axis=0)
+    return pd.DataFrame({
+        'Protein': np.asarray(protein_names)[selected],
+        'Coefficient (Original)': original_coefs[selected],
+        'Bootstrapped Mean': bootstrap_coefs.mean(axis=0)[selected],
+        'Bootstrap 2.5th Percentile': lower[selected],
+        'Bootstrap 97.5th Percentile': upper[selected],
+        'Selection Frequency (%)': (bootstrap_coefs != 0).mean(axis=0)[selected] * 100,
+    }).sort_values('Coefficient (Original)', key=np.abs, ascending=False)
+
+
+def _coefficient_stability_figure(table):
+    top = table.head(20)
+    y = np.arange(len(top))
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.barh(y, top['Coefficient (Original)'], color=sns.color_palette('vlag', n_colors=len(top)),
+            label='Full-data coefficient')
+    # A sparse coefficient's mean can lie outside its central percentile range.
+    # Draw the observed endpoints directly, including a tick for a zero-width range.
+    lower = top['Bootstrap 2.5th Percentile']
+    upper = top['Bootstrap 97.5th Percentile']
+    ax.hlines(y, lower, upper, color='black', label='Bootstrap 2.5th–97.5th percentiles')
+    ax.plot(lower, y, 'k|', upper, y, 'k|')
+    ax.scatter(top['Bootstrapped Mean'], y, s=16, color='black', zorder=3, label='Bootstrap mean')
+    ax.set_yticks(y, labels=top['Protein'])
+    ax.invert_yaxis()
+    ax.set_title(f'Coefficient stability (top {len(top)} by absolute full-data coefficient)\n'
+                 'Preprocessing and tuning fixed across bootstrap refits')
+    ax.set_xlabel('Coefficient (log odds)')
+    ax.axvline(0, color='k', linewidth=1, zorder=0)
+    ax.legend(loc='best')
+    ax.grid(axis='x', alpha=0.3)
+    fig.tight_layout()
+    return fig
+
+
 def _pooled_auc(y, probabilities):
     if not np.isfinite(probabilities).all():
         return np.nan
@@ -231,10 +270,11 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
     print(f"Best L1 Ratio: {clf.l1_ratio}")
     
 
-    print("\nRunning bootstrapping for feature stability (calculating confidence intervals)")
+    n_iterations = 500
+    print(f"\nEstimating coefficient stability across {n_iterations} bootstrap refits with fixed preprocessing and tuning.")
+    print("Selection frequency is the percentage of refits with a nonzero coefficient.")
     if paired:
         print("Resampling participants with both visits together.")
-    n_iterations = 500
     boot_model = clone(clf).set_params(max_iter=5000)
 
     bootstrapped_coefs = []
@@ -243,46 +283,12 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
         boot_model.fit(X_full_scaled[rows], y_encoded[rows])
         bootstrapped_coefs.append(boot_model.coef_.flatten())
 
-    bootstrapped_coefs = np.array(bootstrapped_coefs)
-    
-    # Calculate statistics
-    mean_coefs = np.mean(bootstrapped_coefs, axis=0)
-    lower_bounds = np.percentile(bootstrapped_coefs, 2.5, axis=0)  # 95% CI Lower
-    upper_bounds = np.percentile(bootstrapped_coefs, 97.5, axis=0) # 95% CI Upper
-    
-    # Selection frequency: fraction of times coefficient is exactly not zero
-    selection_freq = np.mean(bootstrapped_coefs != 0, axis=0) * 100
-
-    # Determine "Significance" (CI does not cross zero AND selection > 0 in original model)
-    original_coefs = clf.coef_.ravel()
-    mask = original_coefs != 0
-    
-    selected_proteins = np.array(current_protein_names)[mask]
-    selected_coefs = original_coefs[mask]
-    sel_mean = mean_coefs[mask]
-    sel_lower = lower_bounds[mask]
-    sel_upper = upper_bounds[mask]
-    sel_freq = selection_freq[mask]
-    
-    # A feature/protein is "significant" if both limits of the CI are >0 or both are <0
-    significant_ci = (sel_lower > 0) & (sel_upper > 0) | (sel_lower < 0) & (sel_upper < 0)
-
-    print(f"Selected {len(selected_proteins)} proteins with non-zero coefficients.")
-
-    logistic_df = pd.DataFrame({
-        'Protein': selected_proteins,
-        'Coefficient (Original)': selected_coefs,
-        'Bootstrapped Mean': sel_mean,
-        '95% CI Lower': sel_lower,
-        '95% CI Upper': sel_upper,
-        'Selection Frequency (%)': sel_freq,
-        'Significant CI': significant_ci,
-        'Abs_Coefficient': np.abs(selected_coefs)
-    }).sort_values(by='Abs_Coefficient', ascending=False)
+    logistic_df = _coefficient_stability_table(current_protein_names, clf.coef_.ravel(), np.asarray(bootstrapped_coefs))
+    print(f"Reporting {len(logistic_df)} proteins with nonzero coefficients in the full-data fit.")
     
     file_prefix = f"LogReg_{compare_name}_vs_{baseline_name}"
     output_file_path = os.path.join(output_dir, f"{file_prefix}_Features.csv")
-    logistic_df.drop(columns=['Abs_Coefficient']).to_csv(output_file_path, index=False)
+    logistic_df.to_csv(output_file_path, index=False)
     print(f"Saved features and stability metrics to: {output_file_path}")
 
 
@@ -331,41 +337,9 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
             pdf.savefig()
             plt.close()
 
-        # Plot C: Top coefficients with error bars
         if not logistic_df.empty:
-            top_n = min(20, len(logistic_df))
-            plot_df = logistic_df.head(top_n)
-            
-            plt.figure(figsize=(10, 8))
-            
-            y_pos = np.arange(len(plot_df))
-            
-            # Center the error bars on the Bootstrapped Mean (using np.abs to guarantee positive values)
-            x_err = [
-                np.abs(plot_df['Bootstrapped Mean'] - plot_df['95% CI Lower']),
-                np.abs(plot_df['95% CI Upper'] - plot_df['Bootstrapped Mean'])
-            ]
-            
-            # Draw the bars representing original coefficient
-            plt.barh(y_pos, plot_df['Coefficient (Original)'], 
-                     color=sns.color_palette('vlag', n_colors=len(plot_df)), 
-                     label='Original Coefficient')
-            
-            # Draw the error bars centered on the Bootstrapped Mean (with a dot for the mean)
-            plt.errorbar(plot_df['Bootstrapped Mean'], y_pos, xerr=x_err, 
-                         fmt='o', color='black', ecolor='black', capsize=4, markersize=5, 
-                         label='Bootstrap Mean & 95% CI')
-            
-            plt.yticks(y_pos, plot_df['Protein'])
-            plt.gca().invert_yaxis()  # sort with highest absolute value at the top
-            
-            plt.title(f'Top {top_n} Features (Bars = Original, Points/Lines = Bootstrap 95% CI)')
-            plt.xlabel('Coefficient Value (Log Odds)')
-            plt.axvline(0, color='k', linewidth=1)
-            plt.legend(loc='lower right')
-            plt.grid(axis='x', alpha=0.3)
-            plt.tight_layout()
-            pdf.savefig()
-            plt.close()
+            fig = _coefficient_stability_figure(logistic_df)
+            pdf.savefig(fig)
+            plt.close(fig)
         
     print(f"Saved plots to: {pdf_path}")
