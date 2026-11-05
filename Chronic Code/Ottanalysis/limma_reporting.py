@@ -57,10 +57,14 @@ def write_results(path, results, covariate_results, support, info, config):
     """Keep existing result sheets and add a complete support/eligibility audit."""
     final_cols = [c for c in RESULT_COLUMNS if c in results]
     final_cols += [c for c in support if c not in final_cols and c in results]
-    raw = results['P.Value'].lt(config['P_THRESHOLD']) & results['logFC'].abs().gt(config['LOG_FC_THRESHOLD'])
-    adjusted = results['adj.P.Val'].lt(config['P_THRESHOLD']) & results['logFC'].abs().gt(config['LOG_FC_THRESHOLD'])
-    print(f"Significant proteins (raw p-value < {config['P_THRESHOLD']} & abs(logFC) > {config['LOG_FC_THRESHOLD']}): {int(raw.sum())}")
-    print(f"Significant proteins (adjusted p-value < {config['P_THRESHOLD']} & abs(logFC) > {config['LOG_FC_THRESHOLD']}): {int(adjusted.sum())}")
+    
+    # Define significance based strictly on p-values/adjusted p-values
+    raw = results['P.Value'].lt(config['P_THRESHOLD'])
+    adjusted = results['adj.P.Val'].lt(config['P_THRESHOLD'])
+    
+    print(f"Significant proteins (raw p-value < {config['P_THRESHOLD']}): {int(raw.sum())}")
+    print(f"Significant proteins (adjusted p-value < {config['P_THRESHOLD']}): {int(adjusted.sum())}")
+    
     with pd.ExcelWriter(path, engine='openpyxl') as writer:
         results[final_cols].sort_values('adj.P.Val').to_excel(writer, sheet_name='All_Proteins', index=False)
         results.loc[raw, final_cols].sort_values('P.Value').to_excel(writer, sheet_name='Significant_Raw_PVal', index=False)

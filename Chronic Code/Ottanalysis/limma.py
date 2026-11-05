@@ -289,7 +289,7 @@ def run_limma(df_subset, group_col, protein_cols, baseline_name, compare_name, o
         plt.yscale('log')
         plt.gca().invert_yaxis()
         plt.axhline(0.05, color='r', linestyle='--', alpha=0.5, label='p=0.05')
-        plt.axvline(config["LOG_FC_THRESHOLD"], color='b', linestyle='--', alpha=0.5)
+        plt.axvline(config["LOG_FC_THRESHOLD"], color='b', linestyle='--', alpha=0.5, label=f'|logFC| = {config["LOG_FC_THRESHOLD"]}')
         plt.axvline(-config["LOG_FC_THRESHOLD"], color='b', linestyle='--', alpha=0.5)
         plt.title(f"Volcano Plot: {compare_string}")
         plt.xlabel("Log2 Fold Change")
