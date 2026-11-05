@@ -362,12 +362,16 @@ def run_logistic_regression(df_subset, group_col, protein_cols, baseline_name, c
         # Plot II: Permutation distribution plot
         if permutation_scores is not None:
             plt.figure(figsize=(8, 6))
-            plt.hist(permutation_scores, bins=20, density=True, alpha=0.7, color='gray', label='Null Dist (Permuted)')
+            # AUC is bounded by [0, 1]. Fixed plotting bounds avoid zero-width
+            # bins when permutation scores differ only by floating-point roundoff.
+            plt.hist(permutation_scores, bins=20, range=(0, 1), density=True,
+                     alpha=0.7, color='gray', label='Null Dist (Permuted)')
             plt.axvline(observed_auc, color='red', linestyle='dashed', linewidth=2, label=f'Observed AUC = {observed_auc:.2f}\np-value = {pvalue:.4f}')
             permutation_title = 'Within-Participant Permutation Test' if paired else 'Permutation Test'
             plt.title(f'{permutation_title} with Nested Model Selection')
             plt.xlabel('Pooled Held-Out ROC AUC')
             plt.ylabel('Density')
+            plt.xlim(0, 1)
             plt.legend(loc='best')
             plt.grid(True, alpha=0.3)
             pdf.savefig()
