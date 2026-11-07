@@ -155,7 +155,15 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
     For each protein, iterates through candidate peaks, selects the
     best mixed model based on AIC, and saves the results and visualisations.
-    Significance uses a full-search bootstrap and BH correction across proteins.
+
+    Whole-search bootstrap inference and BH FDR correction are always
+    calculated where possible.
+    By default, ranking, plotting and Significant_Hinges use search-adjusted
+    BH FDR. When rank_by_nominal=True, they use the nominal slope-change
+    p-value of the AIC-selected hinge instead.
+    Nominal significance is exploratory and does not require a successful
+    whole-search bootstrap.
+    
     If no mixed fit succeeds, saves the best descriptive OLS fit without p-values.
     Missing outcomes are omitted separately for each protein; incomplete participants remain.
     """
@@ -224,6 +232,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         {'Setting': 'Ranking criterion', 'Value': 'AIC-selected hinge nominal slope-change p-value' if rank_by_nominal else 'Search-adjusted BH FDR, then whole-search p-value'},
         {'Setting': 'Significant_Hinges criterion', 'Value': f'Nominal slope-change p < {fdr_threshold}' if rank_by_nominal else f'Search-adjusted BH FDR <= {fdr_threshold}'},
         {'Setting': 'Candidate p-value columns', 'Value': 'One nominal slope-change p-value per configured candidate hinge; blanks indicate unavailable tests.'},
+        {'Setting': 'Nominal search-test requirement', 'Value': 'Nominal significance does not require a successful whole-search bootstrap. Check Hinge_Test_Status and Hinge_Search_PValue.'},
         {'Setting': 'Nominal inference warning', 'Value': 'Nominal coefficient p-values are unadjusted for hinge-day selection and testing multiple proteins. Best_Peak is an estimate, not a confirmed exact day.'},
     ])
 

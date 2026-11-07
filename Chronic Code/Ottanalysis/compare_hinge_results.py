@@ -4,9 +4,14 @@ Call compare_hinge_results(result_files, CONFIG) from main.py after the hinge
 loop. result_files maps each successfully completed group to its result path.
 This prevents a failed current run from being replaced by an old workbook.
 
-With two groups, Common_Significant is their significant overlap. With more
-groups, it is the intersection across every selected group. A pooled run or
-one selected group has no between-group overlap to calculate.
+With two or more groups, Common_Significant contains proteins passing
+the search-adjusted BH FDR threshold in every selected group.
+
+Common_Nominal contains proteins passing the nominal slope-change
+p-value threshold in every selected group.
+
+Both overlaps are calculated regardless of the ranking configuration.
+Neither overlap constitutes a direct test of differences between groups.
 """
 
 from pathlib import Path
@@ -234,11 +239,16 @@ def compare_hinge_results(result_files, config=None):
         {"Setting": "Common_Nominal", "Value": "AIC-selected hinge nominal slope-change p < P_THRESHOLD in every group; unadjusted for selection/multiple tests"},
         {"Setting": "OLS fallbacks", "Value": "Descriptive only; excluded from both overlaps"},
         {"Setting": "Report ranking mode", "Value": (
-                "Nominal"
-                if config.get("HINGE_RANK_BY_NOMINAL", False)
-                else "FDR"
-            )},
+            "Nominal"
+            if config.get("HINGE_RANK_BY_NOMINAL", False)
+            else "FDR"
+        )},
         {"Setting": "Interpretation", "Value": "An overlap of groupwise hits is not a direct test of group differences; the nominal overlap is exploratory."},
+        {"Setting": "Nominal inference limitation", "Value": (
+            "Nominal significance does not require a successful "
+            "whole-search bootstrap. Check each group's "
+            "Hinge_Test_Status."
+        )},
         {"Setting": "Common proteins (FDR)", "Value": len(common)},
         {"Setting": "Common proteins (nominal)", "Value": len(common_nominal)},
     ])
