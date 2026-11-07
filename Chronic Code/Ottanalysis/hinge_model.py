@@ -20,9 +20,14 @@ import traceback
 '''
 Fits a random-intercept hinge model to each protein's observed measurements.
 The minimum-AIC candidate estimates the bend day; the slopes need not reverse.
-Significance compares the full candidate search with a linear no-bend mixed
-model using a parametric bootstrap, then adjusts across proteins using BH FDR.
-Ordinary coefficient p-values are nominal descriptions of the selected fit.
+
+Whole-search bootstrap inference and BH FDR correction are calculated
+where possible, regardless of the reporting mode.
+
+By default, protein ranking, plotting and significance reporting use
+the search-adjusted BH FDR. Nominal mode instead uses the unadjusted
+slope-change p-value of the AIC-selected hinge for these purposes.
+
 If all mixed fits fail, the best OLS fallback is retained for description only.
 '''
 
@@ -163,7 +168,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     p-value of the AIC-selected hinge instead.
     Nominal significance is exploratory and does not require a successful
     whole-search bootstrap.
-    
+
     If no mixed fit succeeds, saves the best descriptive OLS fit without p-values.
     Missing outcomes are omitted separately for each protein; incomplete participants remain.
     """
