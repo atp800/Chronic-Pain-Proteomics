@@ -33,6 +33,11 @@ CONFIG = {
     "HINGE_PEAK_CANDIDATES": [],
     "HINGE_GROUPS_TO_RUN": [],
     "HINGE_NUM_PLOTS": 20,
+
+    # False = rank by search-adjusted BH FDR (current approach).
+    # True = rank by nominal p-value of the AIC-selected hinge.
+    # Both methods remain available in the results.
+    "HINGE_RANK_BY_NOMINAL": True,
     # Minimum Monte Carlo p = 1e-5, allowing an isolated discovery among ~2,120 proteins.
     "HINGE_BOOTSTRAP_SIMULATIONS": 99999,
     "HINGE_BOOTSTRAP_SEED": 42,

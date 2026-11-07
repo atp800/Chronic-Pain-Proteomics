@@ -63,7 +63,7 @@ def _fit_mixed_model(df_long, *, hinge=True):
 
 
 
-def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_col, time_col, time_numeric, observed_means):
+def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_col, time_col, time_numeric, observed_means, *, rank_by_nominal=False):
     """
     Generates and saves a plot visualizing the raw data and the fitted hinge model.
     """
@@ -118,11 +118,26 @@ def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_c
     ax.set_xticks(tick_locations)
     ax.set_xticklabels(tick_labels)
 
-    p_label = 'search p upper bound' if model_result['Search_PValue_Is_Upper_Bound'] else 'search p'
+    p_label = (
+        'search p upper bound'
+        if model_result['Search_PValue_Is_Upper_Bound']
+        else 'search p'
+    )
+
+    ranking_label = (
+        'nominal slope-change p-value (exploratory)'
+        if rank_by_nominal
+        else 'search-adjusted BH FDR'
+    )
+
     ax.set_title(
         f'Mixed-Effects Hinge Model for: {protein_name}\n'
-        f'Best Fit AIC: {model_result["AIC"]:.2f}; {p_label}: {model_result["Hinge_Search_PValue"]:.3g}; '
-        f'BH FDR: {model_result["Hinge_FDR"]:.3g}'
+        f'Best Fit AIC: {model_result["AIC"]:.2f}; '
+        f'nominal slope-change p: '
+        f'{model_result["Slope_2_Change_PValue_Nominal"]:.3g}\n'
+        f'{p_label}: {model_result["Hinge_Search_PValue"]:.3g}; '
+        f'BH FDR: {model_result["Hinge_FDR"]:.3g}\n'
+        f'Ranked by: {ranking_label}'
     )
     ax.set_xlabel('Time')
     ax.set_ylabel('Log2 Abundance')
@@ -134,7 +149,7 @@ def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_c
 
 
 def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plots, output_dir, subject_id_delimiter,
-                    *, n_bootstrap=DEFAULT_BOOTSTRAPS, random_seed=DEFAULT_SEED, fdr_threshold=.05):
+                    *, n_bootstrap=DEFAULT_BOOTSTRAPS, random_seed=DEFAULT_SEED, fdr_threshold=.05, rank_by_nominal=False):
     """
     Fits a mixed-effects hinge model for each protein
 
@@ -205,7 +220,11 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         {'Setting': 'FDR method', 'Value': 'Benjamini-Hochberg (BH); assumes independent or suitably positively dependent protein tests.'},
         {'Setting': 'FDR family', 'Value': f'All {len(protein_cols)} requested proteins in this group/sheet. Skipped/unavailable tests count as p=1 for adjustment and remain blank in results.'},
         {'Setting': 'FDR threshold', 'Value': fdr_threshold},
-        {'Setting': 'Nominal coefficients', 'Value': 'Columns ending _Nominal do not account for day selection; not used for significance, ranking or overlap. Best_Peak is an estimate, not a confirmed exact day.'},
+        {'Setting': 'Reporting mode', 'Value': 'Nominal' if rank_by_nominal else 'FDR'},
+        {'Setting': 'Ranking criterion', 'Value': 'AIC-selected hinge nominal slope-change p-value' if rank_by_nominal else 'Search-adjusted BH FDR, then whole-search p-value'},
+        {'Setting': 'Significant_Hinges criterion', 'Value': f'Nominal slope-change p < {fdr_threshold}' if rank_by_nominal else f'Search-adjusted BH FDR <= {fdr_threshold}'},
+        {'Setting': 'Candidate p-value columns', 'Value': 'One nominal slope-change p-value per configured candidate hinge; blanks indicate unavailable tests.'},
+        {'Setting': 'Nominal inference warning', 'Value': 'Nominal coefficient p-values are unadjusted for hinge-day selection and testing multiple proteins. Best_Peak is an estimate, not a confirmed exact day.'},
     ])
 
     # Map numeric times back to their original labels, such as "D7".
@@ -410,20 +429,104 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
 
 
 
-    # Create and save the final results dataframe
-    df_results = adjust_hinge_fdr(pd.DataFrame(all_results), len(protein_cols), fdr_threshold)
-    df_results.sort_values(by=['Hinge_FDR', 'Hinge_Search_PValue'], kind='stable', inplace=True)
-    output_filepath = os.path.join(output_dir, "hinge_model_results.xlsx")
-
-    df_mixed_only = df_results[df_results['Model_Type'] == 'Mixed-Effects']
-    df_fixed_only = df_results[df_results['Model_Type'] == 'Fixed-Effects']
-    top_proteins_to_plot = df_mixed_only[df_mixed_only['Hinge_FDR'].notna()].head(num_plots)
-    print(f"Mixed-effects results: {len(df_mixed_only)}; descriptive OLS fallbacks: {len(df_fixed_only)}.")
-    print(f"Proteins meeting BH FDR <= {fdr_threshold}: {int(df_results['Significant_FDR'].sum())}.")
-
-
-    # Convert the candidate records into a table.
+    # The statistical fits and FDR calculation are identical in both modes.
+    df_results = adjust_hinge_fdr(
+        pd.DataFrame(all_results), len(protein_cols), fdr_threshold
+    )
     df_candidates = pd.DataFrame(all_candidate_results)
+
+    # Add nominal slope-change p-values for every configured candidate hinge.
+    pivot_pvals = df_candidates.pivot(
+        index='Protein',
+        columns='Candidate_Time_Numeric',
+        values='Slope_2_Change_PValue_Nominal'
+    )
+
+    # Put candidate columns in chronological order.
+    pivot_pvals = pivot_pvals.reindex(
+        columns=sorted(candidate_peaks_numeric)
+    )
+
+    # Label the new columns using the original timepoint labels.
+    pivot_pvals.columns = [
+        f"Peak_{time_label_map.get(t, str(t))}_Nominal_PValue"
+        for t in pivot_pvals.columns
+    ]
+
+    # Merge all candidate p-values into the main results.
+    df_results = df_results.merge(
+        pivot_pvals,
+        left_on='Protein',
+        right_index=True,
+        how='left',
+        validate='one_to_one',
+        sort=False
+    )
+
+    # Keep both significance definitions in the output workbook.
+    df_results['Significant_Nominal'] = (
+        df_results['Model_Type'].eq('Mixed-Effects')
+        & df_results['Slope_2_Change_PValue_Nominal'].lt(fdr_threshold)
+    )
+
+    # Select the ranking and significance criteria.
+    if rank_by_nominal:
+        sort_columns = [
+            'Slope_2_Change_PValue_Nominal',
+            'Protein'
+        ]
+        ranking_column = 'Slope_2_Change_PValue_Nominal'
+        significance_column = 'Significant_Nominal'
+        ranking_description = 'nominal slope-change p-value (exploratory)'
+    else:
+        sort_columns = [
+            'Hinge_FDR',
+            'Hinge_Search_PValue'
+        ]
+        ranking_column = 'Hinge_FDR'
+        significance_column = 'Significant_FDR'
+        ranking_description = 'search-adjusted BH FDR'
+
+    # Rank proteins according to the selected mode.
+    df_results.sort_values(
+        by=sort_columns,
+        kind='stable',
+        na_position='last',
+        inplace=True
+    )
+
+    output_filepath = os.path.join(
+        output_dir, 'hinge_model_results.xlsx'
+    )
+
+    # Keep mixed-effects and descriptive fallback models separate.
+    df_mixed_only = df_results[
+        df_results['Model_Type'] == 'Mixed-Effects'
+    ]
+    df_fixed_only = df_results[
+        df_results['Model_Type'] == 'Fixed-Effects'
+    ]
+
+    # Select top N proteins using the configured ranking criterion.
+    top_proteins_to_plot = df_mixed_only[
+        df_mixed_only[ranking_column].notna()
+    ].head(num_plots)
+
+    # This determines which proteins go into Significant_Hinges.
+    significant_mask = df_results[significance_column]
+
+    print(
+        f"Mixed-effects results: {len(df_mixed_only)}; "
+        f"descriptive OLS fallbacks: {len(df_fixed_only)}."
+    )
+    print(
+        f"FDR-significant proteins: "
+        f"{int(df_results['Significant_FDR'].sum())}; "
+        f"nominally significant proteins: "
+        f"{int(df_results['Significant_Nominal'].sum())}."
+    )
+    print(f"Ranking mode: {ranking_description}.")
+
 
     # Look up the selected hinge time for each protein.
     best_peak_by_protein = df_results.set_index(
@@ -453,7 +556,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             writer, sheet_name='All_Candidate_Timepoints', index=False)
         top_proteins_to_plot.to_excel(
             writer, sheet_name='Top_Mixed_Models', index=False)
-        df_results[df_results['Significant_FDR']].to_excel(
+        df_results[significant_mask].to_excel(
             writer, sheet_name='Significant_Hinges', index=False)
         df_coverage.to_excel(writer, sheet_name='Data_Coverage', index=False)
         df_time_coverage.to_excel(writer, sheet_name='Observed_By_Timepoint', index=False)
@@ -475,7 +578,11 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             os.replace(entry.path, os.path.join(archive_dir, entry.name))
         print(f"Previous hinge plots preserved in: {archive_dir}")
     
-    print(f"Creating plots for the top {len(top_proteins_to_plot)} mixed-effects models ranked by search-adjusted BH FDR (top-ranked does not imply significant)")
+    print(
+        f"Creating plots for the top {len(top_proteins_to_plot)} "
+        f"mixed-effects models ranked by {ranking_description} "
+        f"(top-ranked does not imply significant)."
+    )
     for _, row in tqdm(top_proteins_to_plot.iterrows(), total=len(top_proteins_to_plot), desc="Generating plots"):
         protein_name = row['Protein']
         
@@ -488,14 +595,15 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             plot_filename = f"{protein_name.replace('/', '_')}_hinge_plot.png"
             plot_filepath = os.path.join(plots_dir, plot_filename)
             
-            plot_best_fit(protein_name, 
-                          df_plot_long, 
+            plot_best_fit(protein_name,
+                          df_plot_long,
                           row,
                           plot_filepath,
                           subject_id_col='subject_id_col',
                           time_col=time_col,
                           time_numeric='time_numeric',
-                          observed_means=observed_means[protein_name])
+                          observed_means=observed_means[protein_name],
+                          rank_by_nominal=rank_by_nominal)
         except Exception as e:
             print(f"Could not generate plot for {protein_name}: {e}")
 
