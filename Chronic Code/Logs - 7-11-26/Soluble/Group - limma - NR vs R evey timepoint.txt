@@ -1,0 +1,384 @@
+PowerShell 7.4.22
+Loading personal and system profiles took 2954ms.
+(base) PS C:\Users\apana\OneDrive\Documents\Research\Uni of Western Sydney\Pain Project\Chronic Code\Ottanalysis> conda activate scripts
+(scripts) PS C:\Users\apana\OneDrive\Documents\Research\Uni of Western Sydney\Pain Project\Chronic Code\Ottanalysis> python main.py
+Auto-detected R installation: C:\Program Files\R\R-4.5.2
+
+--- R and Limma Version Information ---
+R version: R version 4.5.2 (2025-10-31 ucrt)
+limma version: 3.66.0
+Session Info:
+R version 4.5.2 (2025-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] LC_COLLATE=English_United Kingdom.1252
+[2] LC_CTYPE=English_United Kingdom.1252
+[3] LC_MONETARY=English_United Kingdom.1252
+[4] LC_NUMERIC=C
+[5] LC_TIME=English_United Kingdom.1252
+
+time zone: Europe/London
+tzcode source: internal
+
+attached base packages:
+[1] tools     stats     graphics  grDevices utils     datasets  methods
+[8] base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.5.2
+rpy2 version: 3.5.11
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+============================================================
+ANALYSIS MODE: GROUP_COMPARISON
+============================================================
+Baseline: NR
+Comparisons to make: ['R']
+Will loop independently for: ['D11', 'D14', 'D17', 'D21', 'D25', 'D3', 'D5', 'D7', 'D9', 'T0', 'T10', 'T20', 'T30']
+
+Loading data...
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D11
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 890/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 53
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.96, Data Min: -2.50
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 24
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D14
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 890/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 90
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.31, Data Min: -10.65
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 889/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 19
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D17
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 891/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 46
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.77, Data Min: -9.12
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 891/891 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 17
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D21
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 891/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 60
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.09, Data Min: -5.52
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 891/891 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 17
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D25
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 890/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 36
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.80, Data Min: -8.38
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 28
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D3
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 890/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 104
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.67, Data Min: -8.62
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 48
+Significant proteins (adjusted p-value < 0.05): 1
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D5
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 891/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 52
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.05, Data Min: -1.66
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 890/891 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 31
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D7
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 889/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 60
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.11, Data Min: -13.71
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 888/889 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 11
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D9
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 891/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 50
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.71, Data Min: -10.06
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 891/891 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 6
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T0
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 889/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 50
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -6.29
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 889/889 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 36
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T10
+Running comparison: NR vs R
+Rows in subset: 9
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 890/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 56
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.15, Data Min: -12.77
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 889/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 14
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T20
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 889/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 67
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.37, Data Min: -3.09
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 889/889 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 24
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T30
+Running comparison: NR vs R
+Rows in subset: 11
+Paired comparison: False | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 888/892 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 74
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.72, Data Min: -5.55
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 888/888 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 32
+Significant proteins (adjusted p-value < 0.05): 0
+
+-----------------------------------
+
+-----------------------------------
+j'ai fini
+R[write to console]: Warning messages:
+
+R[write to console]: 1: Partial NA coefficients for 1 probe(s)
+
+R[write to console]: 2: Partial NA coefficients for 1 probe(s)
+
+R[write to console]: 3: Partial NA coefficients for 1 probe(s)

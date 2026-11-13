@@ -1,0 +1,1537 @@
+Loading personal and system profiles took 1783ms.
+(base) PS C:\Users\apana\OneDrive\Documents\Research\Uni of Western Sydney\Pain Project\Chronic Code\Ottanalysis> conda activate scripts
+(scripts) PS C:\Users\apana\OneDrive\Documents\Research\Uni of Western Sydney\Pain Project\Chronic Code\Ottanalysis> python main.py
+Auto-detected R installation: C:\Program Files\R\R-4.5.2
+
+--- R and Limma Version Information ---
+R version: R version 4.5.2 (2025-10-31 ucrt)
+limma version: 3.66.0
+Session Info:
+R version 4.5.2 (2025-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] LC_COLLATE=English_United Kingdom.1252
+[2] LC_CTYPE=English_United Kingdom.1252
+[3] LC_MONETARY=English_United Kingdom.1252
+[4] LC_NUMERIC=C
+[5] LC_TIME=English_United Kingdom.1252
+
+time zone: Europe/London
+tzcode source: internal
+
+attached base packages:
+[1] tools     stats     graphics  grDevices utils     datasets  methods
+[8] base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.5.2
+rpy2 version: 3.5.11
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+============================================================
+ANALYSIS MODE: LONGITUDINAL
+============================================================
+Baseline: T0
+Comparisons to make: ['D11', 'D14', 'D17', 'D21', 'D25', 'D3', 'D5', 'D7', 'D9', 'T0', 'T10', 'T20', 'T30']
+Will loop independently for: ['NR', 'R']
+
+Loading data...
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: NR
+Running comparison: T0 vs D11
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D11
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 887/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 84
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -4.54
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D11 - T0: 887/887 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 108
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D11 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D11 (comparison/positive).
+Positive coefficients increase predicted log odds of D11 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.9444
+Accuracy: 0.9167
+F1 Score (positive class: D11): 0.9091
+Confusion Matrix:
+Predicted  T0  D11
+Actual
+T0          6    0
+D11         1    5
+
+Proteins retained in the final fit: 565
+Best Regularisation Strength (C): 2.782559402207126
+Best L1 Ratio: 0.7
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 30 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D11\LogReg_D11_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D11\LogReg_D11_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0611
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D11\LogReg_D11_vs_T0_Plots.pdf
+Running comparison: T0 vs D14
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D14
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 887/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 116
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -4.54
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D14 - T0: 887/887 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 31
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D14 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D14 (comparison/positive).
+Positive coefficients increase predicted log odds of D14 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.4583
+Accuracy: 0.4167
+F1 Score (positive class: D14): 0.3636
+Confusion Matrix:
+Predicted  T0  D14
+Actual
+T0          3    3
+D14         4    2
+
+Proteins retained in the final fit: 603
+Best Regularisation Strength (C): 0.0001
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 0 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D14\LogReg_D14_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D14\LogReg_D14_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.6275
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D14\LogReg_D14_vs_T0_Plots.pdf
+Running comparison: T0 vs D17
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D17
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 887/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 80
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -4.54
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D17 - T0: 887/887 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 293
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D17 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D17 (comparison/positive).
+Positive coefficients increase predicted log odds of D17 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.9722
+Accuracy: 0.9167
+F1 Score (positive class: D17): 0.9231
+Confusion Matrix:
+Predicted  T0  D17
+Actual
+T0          5    1
+D17         0    6
+
+Proteins retained in the final fit: 685
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 0.7
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 14 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D17\LogReg_D17_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D17\LogReg_D17_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0307
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D17\LogReg_D17_vs_T0_Plots.pdf
+Running comparison: T0 vs D21
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D21
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 888/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 92
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -4.54
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D21 - T0: 888/888 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 137
+Significant proteins (adjusted p-value < 0.05): 1
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D21 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D21 (comparison/positive).
+Positive coefficients increase predicted log odds of D21 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.8611
+Accuracy: 0.7500
+F1 Score (positive class: D21): 0.7692
+Confusion Matrix:
+Predicted  T0  D21
+Actual
+T0          4    2
+D21         1    5
+
+Proteins retained in the final fit: 578
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 144 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D21\LogReg_D21_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D21\LogReg_D21_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0606
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D21\LogReg_D21_vs_T0_Plots.pdf
+Running comparison: T0 vs D25
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D25
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 888/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 86
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -4.54
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D25 - T0: 888/888 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 237
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D25 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D25 (comparison/positive).
+Positive coefficients increase predicted log odds of D25 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.8056
+Accuracy: 0.8333
+F1 Score (positive class: D25): 0.8333
+Confusion Matrix:
+Predicted  T0  D25
+Actual
+T0          5    1
+D25         1    5
+
+Proteins retained in the final fit: 550
+Best Regularisation Strength (C): 0.046415888336127774
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 66 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D25\LogReg_D25_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D25\LogReg_D25_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.1261
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D25\LogReg_D25_vs_T0_Plots.pdf
+Running comparison: T0 vs D3
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D3
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 885/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 142
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.67, Data Min: -8.62
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D3 - T0: 885/885 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 36
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D3 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D3 (comparison/positive).
+Positive coefficients increase predicted log odds of D3 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.5000
+Accuracy: 0.6667
+F1 Score (positive class: D3): 0.6667
+Confusion Matrix:
+Predicted  T0  D3
+Actual
+T0          4   2
+D3          2   4
+
+Proteins retained in the final fit: 622
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 110 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D3\LogReg_D3_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D3\LogReg_D3_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.4346
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D3\LogReg_D3_vs_T0_Plots.pdf
+Running comparison: T0 vs D5
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D5
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 888/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 90
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -4.54
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D5 - T0: 888/888 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 209
+Significant proteins (adjusted p-value < 0.05): 54
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D5 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D5 (comparison/positive).
+Positive coefficients increase predicted log odds of D5 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 1.0000
+Accuracy: 1.0000
+F1 Score (positive class: D5): 1.0000
+Confusion Matrix:
+Predicted  T0  D5
+Actual
+T0          6   0
+D5          0   6
+
+Proteins retained in the final fit: 561
+Best Regularisation Strength (C): 0.046415888336127774
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 59 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D5\LogReg_D5_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D5\LogReg_D5_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0307
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D5\LogReg_D5_vs_T0_Plots.pdf
+Running comparison: T0 vs D7
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D7
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 886/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 102
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -8.09
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D7 - T0: 886/886 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 193
+Significant proteins (adjusted p-value < 0.05): 6
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D7 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D7 (comparison/positive).
+Positive coefficients increase predicted log odds of D7 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.8611
+Accuracy: 0.7500
+F1 Score (positive class: D7): 0.7273
+Confusion Matrix:
+Predicted  T0  D7
+Actual
+T0          5   1
+D7          2   4
+
+Proteins retained in the final fit: 700
+Best Regularisation Strength (C): 0.046415888336127774
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 49 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D7\LogReg_D7_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D7\LogReg_D7_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0969
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D7\LogReg_D7_vs_T0_Plots.pdf
+Running comparison: T0 vs D9
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D9
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 888/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 90
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -10.06
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D9 - T0: 888/888 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 258
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D9 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D9 (comparison/positive).
+Positive coefficients increase predicted log odds of D9 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.9444
+Accuracy: 0.9167
+F1 Score (positive class: D9): 0.9231
+Confusion Matrix:
+Predicted  T0  D9
+Actual
+T0          5   1
+D9          0   6
+
+Proteins retained in the final fit: 697
+Best Regularisation Strength (C): 0.046415888336127774
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 73 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D9\LogReg_D9_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D9\LogReg_D9_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0307
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_D9\LogReg_D9_vs_T0_Plots.pdf
+Running comparison: T0 vs T0
+Rows in subset: 6
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs T0
+Mode: PAIRED Analysis (grouping by subject ID)
+Skipping limma: both distinct levels of the requested comparison are required.
+
+------------------------------------------------------------------
+Running Logistic Regression avec: T0 vs T0
+------------------------------------------------------------------
+Skipping longitudinal logistic regression: both distinct requested visits are required.
+Running comparison: T0 vs T10
+Rows in subset: 11
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs T10
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 887/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 959
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -4.54
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for T10 - T0: 887/887 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 95
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: T10 vs T0
+------------------------------------------------------------------
+Excluding 1 participants without measured samples at both requested visits.
+Longitudinal logistic regression: 5 complete participant pairs (10 visits).
+Class mapping: 0 = T0 (baseline), 1 = T10 (comparison/positive).
+Positive coefficients increase predicted log odds of T10 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (5/5)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.4000
+Accuracy: 0.4000
+F1 Score (positive class: T10): 0.0000
+Confusion Matrix:
+Predicted  T0  T10
+Actual
+T0          4    1
+T10         5    0
+
+Proteins retained in the final fit: 660
+Best Regularisation Strength (C): 2.782559402207126
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 62 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_T10\LogReg_T10_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_T10\LogReg_T10_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.7448
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_T10\LogReg_T10_vs_T0_Plots.pdf
+Running comparison: T0 vs T20
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs T20
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 887/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 126
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -4.54
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for T20 - T0: 887/887 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 85
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: T20 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = T20 (comparison/positive).
+Positive coefficients increase predicted log odds of T20 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.6389
+Accuracy: 0.7500
+F1 Score (positive class: T20): 0.7692
+Confusion Matrix:
+Predicted  T0  T20
+Actual
+T0          4    2
+T20         1    5
+
+Proteins retained in the final fit: 609
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 142 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_T20\LogReg_T20_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_T20\LogReg_T20_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.2164
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_T20\LogReg_T20_vs_T0_Plots.pdf
+Running comparison: T0 vs T30
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs T30
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 888/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 96
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.42, Data Min: -4.54
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for T30 - T0: 888/888 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 76
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: T30 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = T30 (comparison/positive).
+Positive coefficients increase predicted log odds of T30 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.6389
+Accuracy: 0.7500
+F1 Score (positive class: T30): 0.7692
+Confusion Matrix:
+Predicted  T0  T30
+Actual
+T0          4    2
+T30         1    5
+
+Proteins retained in the final fit: 591
+Best Regularisation Strength (C): 2.782559402207126
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 236 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_T30\LogReg_T30_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_T30\LogReg_T30_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.2190
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\NR\T0_vs_T30\LogReg_T30_vs_T0_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: R
+Running comparison: T0 vs D11
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D11
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 889/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 66
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.96, Data Min: -0.46
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D11 - T0: 889/889 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 22
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D11 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D11 (comparison/positive).
+Positive coefficients increase predicted log odds of D11 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.5000
+Accuracy: 0.5833
+F1 Score (positive class: D11): 0.6154
+Confusion Matrix:
+Predicted  T0  D11
+Actual
+T0          3    3
+D11         2    4
+
+Proteins retained in the final fit: 642
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 1.0
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 2 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D11\LogReg_D11_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D11\LogReg_D11_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.4044
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D11\LogReg_D11_vs_T0_Plots.pdf
+Running comparison: T0 vs D14
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D14
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 890/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 102
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.31, Data Min: -10.65
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D14 - T0: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 120
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D14 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D14 (comparison/positive).
+Positive coefficients increase predicted log odds of D14 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.6944
+Accuracy: 0.6667
+F1 Score (positive class: D14): 0.6667
+Confusion Matrix:
+Predicted  T0  D14
+Actual
+T0          4    2
+D14         2    4
+
+Proteins retained in the final fit: 690
+Best Regularisation Strength (C): 0.046415888336127774
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 61 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D14\LogReg_D14_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D14\LogReg_D14_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.2208
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D14\LogReg_D14_vs_T0_Plots.pdf
+Running comparison: T0 vs D17
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D17
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 890/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 52
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.77, Data Min: -8.17
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D17 - T0: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 10
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D17 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D17 (comparison/positive).
+Positive coefficients increase predicted log odds of D17 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.2222
+Accuracy: 0.3333
+F1 Score (positive class: D17): 0.0000
+Confusion Matrix:
+Predicted  T0  D17
+Actual
+T0          4    2
+D17         6    0
+
+Proteins retained in the final fit: 596
+Best Regularisation Strength (C): 0.0001
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 0 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D17\LogReg_D17_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D17\LogReg_D17_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.9351
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D17\LogReg_D17_vs_T0_Plots.pdf
+Running comparison: T0 vs D21
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D21
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 890/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 76
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.00, Data Min: -6.29
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D21 - T0: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 17
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D21 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D21 (comparison/positive).
+Positive coefficients increase predicted log odds of D21 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.2639
+Accuracy: 0.3333
+F1 Score (positive class: D21): 0.0000
+Confusion Matrix:
+Predicted  T0  D21
+Actual
+T0          4    2
+D21         6    0
+
+Proteins retained in the final fit: 679
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 19 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D21\LogReg_D21_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D21\LogReg_D21_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.8455
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D21\LogReg_D21_vs_T0_Plots.pdf
+Running comparison: T0 vs D25
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D25
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 890/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 54
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.80, Data Min: -6.29
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D25 - T0: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 19
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D25 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D25 (comparison/positive).
+Positive coefficients increase predicted log odds of D25 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.6528
+Accuracy: 0.5000
+F1 Score (positive class: D25): 0.5000
+Confusion Matrix:
+Predicted  T0  D25
+Actual
+T0          3    3
+D25         3    3
+
+Proteins retained in the final fit: 613
+Best Regularisation Strength (C): 21.54434690031882
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 224 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D25\LogReg_D25_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D25\LogReg_D25_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.2464
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D25\LogReg_D25_vs_T0_Plots.pdf
+Running comparison: T0 vs D3
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D3
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 890/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 78
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.25, Data Min: -4.70
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D3 - T0: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 90
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D3 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D3 (comparison/positive).
+Positive coefficients increase predicted log odds of D3 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.9722
+Accuracy: 0.9167
+F1 Score (positive class: D3): 0.9231
+Confusion Matrix:
+Predicted  T0  D3
+Actual
+T0          5   1
+D3          0   6
+
+Proteins retained in the final fit: 656
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 0.7
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 8 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D3\LogReg_D3_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D3\LogReg_D3_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0631
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D3\LogReg_D3_vs_T0_Plots.pdf
+Running comparison: T0 vs D5
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D5
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 890/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 56
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.77, Data Min: -1.66
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D5 - T0: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 97
+Significant proteins (adjusted p-value < 0.05): 10
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D5 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D5 (comparison/positive).
+Positive coefficients increase predicted log odds of D5 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.8056
+Accuracy: 0.7500
+F1 Score (positive class: D5): 0.7692
+Confusion Matrix:
+Predicted  T0  D5
+Actual
+T0          4   2
+D5          1   5
+
+Proteins retained in the final fit: 595
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 0.9
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 3 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D5\LogReg_D5_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D5\LogReg_D5_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0613
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D5\LogReg_D5_vs_T0_Plots.pdf
+Running comparison: T0 vs D7
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D7
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 891/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 62
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.77, Data Min: -6.29
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D7 - T0: 891/891 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 88
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D7 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D7 (comparison/positive).
+Positive coefficients increase predicted log odds of D7 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.7500
+Accuracy: 0.7500
+F1 Score (positive class: D7): 0.7273
+Confusion Matrix:
+Predicted  T0  D7
+Actual
+T0          5   1
+D7          2   4
+
+Proteins retained in the final fit: 577
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 17 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D7\LogReg_D7_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D7\LogReg_D7_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 75/9999C:\Users\apana\anaconda3\envs\scripts\Lib\site-packages\joblib\externals\loky\process_executor.py:752: UserWarning: A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak.
+  warnings.warn(
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0956
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D7\LogReg_D7_vs_T0_Plots.pdf
+Running comparison: T0 vs D9
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs D9
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 890/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 68
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 19.77, Data Min: -4.22
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for D9 - T0: 890/890 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 18
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: D9 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = D9 (comparison/positive).
+Positive coefficients increase predicted log odds of D9 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.1250
+Accuracy: 0.2500
+F1 Score (positive class: D9): 0.0000
+Confusion Matrix:
+Predicted  T0  D9
+Actual
+T0          3   3
+D9          6   0
+
+Proteins retained in the final fit: 726
+Best Regularisation Strength (C): 0.3593813663804626
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 135 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D9\LogReg_D9_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D9\LogReg_D9_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 1.0000
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_D9\LogReg_D9_vs_T0_Plots.pdf
+Running comparison: T0 vs T0
+Rows in subset: 6
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs T0
+Mode: PAIRED Analysis (grouping by subject ID)
+Skipping limma: both distinct levels of the requested comparison are required.
+
+------------------------------------------------------------------
+Running Logistic Regression avec: T0 vs T0
+------------------------------------------------------------------
+Skipping longitudinal logistic regression: both distinct requested visits are required.
+Running comparison: T0 vs T10
+Rows in subset: 10
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs T10
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 889/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 1848
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.15, Data Min: -12.77
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for T10 - T0: 889/889 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 17
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: T10 vs T0
+------------------------------------------------------------------
+Excluding 2 participants without measured samples at both requested visits.
+Longitudinal logistic regression: 4 complete participant pairs (8 visits).
+Class mapping: 0 = T0 (baseline), 1 = T10 (comparison/positive).
+Positive coefficients increase predicted log odds of T10 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (4/4)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.3438
+Accuracy: 0.5000
+F1 Score (positive class: T10): 0.3333
+Confusion Matrix:
+Predicted  T0  T10
+Actual
+T0          3    1
+T10         3    1
+
+Proteins retained in the final fit: 667
+Best Regularisation Strength (C): 0.046415888336127774
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 21 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_T10\LogReg_T10_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_T10\LogReg_T10_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.7504
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_T10\LogReg_T10_vs_T0_Plots.pdf
+Running comparison: T0 vs T20
+Rows in subset: 12
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs T20
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 889/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 58
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.32, Data Min: -3.09
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for T20 - T0: 889/889 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 108
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: T20 vs T0
+------------------------------------------------------------------
+Longitudinal logistic regression: 6 complete participant pairs (12 visits).
+Class mapping: 0 = T0 (baseline), 1 = T20 (comparison/positive).
+Positive coefficients increase predicted log odds of T20 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (6/6)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.4722
+Accuracy: 0.5000
+F1 Score (positive class: T20): 0.5000
+Confusion Matrix:
+Predicted  T0  T20
+Actual
+T0          3    3
+T20         3    3
+
+Proteins retained in the final fit: 654
+Best Regularisation Strength (C): 21.54434690031882
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 575 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_T20\LogReg_T20_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_T20\LogReg_T20_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.4725
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_T20\LogReg_T20_vs_T0_Plots.pdf
+Running comparison: T0 vs T30
+Rows in subset: 11
+Paired comparison: True | Is Delta Mode: False
+
+
+------------------------------------------------------------------
+Running Limma: T0 vs T30
+Mode: PAIRED Analysis (grouping by subject ID)
+Retained 888/892 proteins with at least two complete participant pairs and observed variation.
+Missing protein values retained: 996
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 20.72, Data Min: -6.29
+Participant-constant covariates cannot be estimated separately from participant effects.
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + subjects + cov_Age + cov_Gender + comparison)...
+Coefficients not estimable: cov_Age cov_GenderM
+Testable proteins for T30 - T0: 888/888 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 121
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+Running Logistic Regression avec: T30 vs T0
+------------------------------------------------------------------
+Excluding 1 participants without measured samples at both requested visits.
+Longitudinal logistic regression: 5 complete participant pairs (10 visits).
+Class mapping: 0 = T0 (baseline), 1 = T30 (comparison/positive).
+Positive coefficients increase predicted log odds of T30 versus T0.
+Leaving one participant out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (5/5)
+Validation Complete.
+
+
+
+--- Model Performance (Nested participant-held-out CV Estimate) ---
+Pooled held-out ROC AUC: 0.8400
+Accuracy: 0.7000
+F1 Score (positive class: T30): 0.6667
+Confusion Matrix:
+Predicted  T0  T30
+Actual
+T0          4    1
+T30         2    3
+
+Proteins retained in the final fit: 635
+Best Regularisation Strength (C): 2.782559402207126
+Best L1 Ratio: 0.1
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Resampling participants with both visits together.
+Reporting 227 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_T30\LogReg_T30_vs_T0_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_T30\LogReg_T30_vs_T0_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Swapping visit labels only within participants, with participant-held-out validation.
+Permutation 9999/9999
+Nested CV permutation p-value (9999 draws): 0.0620
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\LONGITUDINAL\R\T0_vs_T30\LogReg_T30_vs_T0_Plots.pdf
+
+-----------------------------------
+
+-----------------------------------
+j'ai fini
+R[write to console]: There were 48 warnings (use warnings() to see them)

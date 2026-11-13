@@ -1,0 +1,3 @@
+Protein,Coefficient (Original),Bootstrapped Mean,Bootstrap 2.5th Percentile,Bootstrap 97.5th Percentile,Selection Frequency (%),Reference Class (0),Positive Class (1)
+Q7M4L6,0.7222396426485368,0.2778027560251594,0.0,0.9151433543032022,54.800000000000004,T0,D11
+Q8N8J0,0.032872938953605074,0.10186228906847514,0.0,0.6964674112871763,33.6,T0,D11

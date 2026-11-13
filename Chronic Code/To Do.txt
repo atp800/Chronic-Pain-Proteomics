@@ -40,6 +40,11 @@ Interpretation and combining results — no code change inherently required
 - #21 · Covariate adjustment differs by method. Only limma uses the selected covariates. Its paired participant effects already absorb time-invariant participant characteristics. Agreement between limma, hinge and logistic results therefore does not imply identical covariate adjustment.
 - #25 · Define what qualifies a protein for the combined shortlist. Limma adjusts across proteins within each contrast. If significance in any comparison or fraction earns a place, account for that wider search. The four comparisons reuse participants and measurements, so overlap is not independent replication. If the claim requires a true effect exceeding 0.58 log2 units, limma’s treat tests that threshold directly.
 
+Other Improvements
+- Add multi-threading/multi-processing
+- Package as proper applciation
+- Remove need for certain GUI selections for tests that aren't being run
+- Improve progess bar and console output: window with the log/print staments, a separate 'current operation' progress bar and 'overall' progress bar
 
 WRITE UP
 - Update methodlogy seciton of manuscript to refelct any changes
@@ -49,6 +54,8 @@ WRITE UP
 
 NOTES
 - s2p3 was resp at t0 and nonresp at D14 in i sheet of covariates combined dataset - check there's no inconsitencies in new data
+
+
 --------------------------------------------------------------------
 
 

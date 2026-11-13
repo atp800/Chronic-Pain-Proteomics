@@ -1,0 +1,444 @@
+PowerShell 7.4.22
+Loading personal and system profiles took 1903ms.
+(base) PS C:\Users\apana\OneDrive\Documents\Research\Uni of Western Sydney\Pain Project\Chronic Code\Ottanalysis> conda activate scripts
+(scripts) PS C:\Users\apana\OneDrive\Documents\Research\Uni of Western Sydney\Pain Project\Chronic Code\Ottanalysis> python main.py
+Auto-detected R installation: C:\Program Files\R\R-4.5.2
+
+--- R and Limma Version Information ---
+R version: R version 4.5.2 (2025-10-31 ucrt)
+limma version: 3.66.0
+Session Info:
+R version 4.5.2 (2025-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] LC_COLLATE=English_United Kingdom.1252
+[2] LC_CTYPE=English_United Kingdom.1252
+[3] LC_MONETARY=English_United Kingdom.1252
+[4] LC_NUMERIC=C
+[5] LC_TIME=English_United Kingdom.1252
+
+time zone: Europe/London
+tzcode source: internal
+
+attached base packages:
+[1] tools     stats     graphics  grDevices utils     datasets  methods
+[8] base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.5.2
+rpy2 version: 3.5.11
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+============================================================
+ANALYSIS MODE: DELTA
+============================================================
+Delta Calculation: Change from baseline T0 to ['D11', 'D14', 'D17', 'D21', 'D25', 'D3', 'D5', 'D7', 'D9', 'T10', 'T20', 'T30']
+Baseline: NR
+Comparisons to make: ['R']
+Will loop independently for: ['D11', 'D14', 'D17', 'D21', 'D25', 'D3', 'D5', 'D7', 'D9', 'T10', 'T20', 'T30']
+
+Loading data...
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D11
+Transforming data into deltas (T0 to D11)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D11 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 667/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 60
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 14.33, Data Min: -10.51
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 665/667 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 77
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D14
+Transforming data into deltas (T0 to D14)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D14 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 664/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 56
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 13.73, Data Min: -19.01
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 663/664 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 42
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D17
+Transforming data into deltas (T0 to D17)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D17 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 666/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 57
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 14.03, Data Min: -11.77
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 666/666 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 45
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D21
+Transforming data into deltas (T0 to D21)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D21 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 667/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 58
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 13.30, Data Min: -18.87
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 666/667 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 30
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D25
+Transforming data into deltas (T0 to D25)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D25 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 666/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 47
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 15.16, Data Min: -10.62
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 666/666 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 38
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D3
+Transforming data into deltas (T0 to D3)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D3 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 666/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 61
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 13.70, Data Min: -14.02
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 666/666 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 22
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D5
+Transforming data into deltas (T0 to D5)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D5 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 665/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 56
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 13.83, Data Min: -13.53
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 665/665 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 105
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D7
+Transforming data into deltas (T0 to D7)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D7 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 666/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 64
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 10.45, Data Min: -9.84
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 666/666 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 50
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D9
+Transforming data into deltas (T0 to D9)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D9 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 667/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 67
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 14.50, Data Min: -9.99
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 666/667 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 106
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T10
+Transforming data into deltas (T0 to T10)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (T10 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 9
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 664/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 2037
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 15.78, Data Min: -8.20
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 663/664 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 153
+Significant proteins (adjusted p-value < 0.05): 9
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T20
+Transforming data into deltas (T0 to T20)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (T20 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 668/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 78
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 14.11, Data Min: -10.63
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 668/668 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 28
+Significant proteins (adjusted p-value < 0.05): 0
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T30
+Transforming data into deltas (T0 to T30)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (T30 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 11
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+
+------------------------------------------------------------------
+Running Limma: NR vs R
+Mode: INDEPENDENT Analysis
+Retained 667/673 proteins with at least two observations in each group and observed variation.
+Missing protein values retained: 744
+
+--- DATA SCALE DIAGNOSTICS ---
+Data Max: 15.16, Data Min: -11.14
+Added numeric covariate: Age
+Added categorical covariate: Gender
+Creating Design Matrix (~ 1 + cov_Age + cov_Gender + comparison)...
+Testable proteins for R - NR: 666/667 (estimable effect and positive residual degrees of freedom).
+Significant proteins (raw p-value < 0.05): 86
+Significant proteins (adjusted p-value < 0.05): 0
+
+-----------------------------------
+
+-----------------------------------
+j'ai fini
+R[write to console]: Warning messages:
+
+R[write to console]: 1: Partial NA coefficients for 1 probe(s)
+
+R[write to console]: 2: Partial NA coefficients for 1 probe(s)
+
+R[write to console]: 3: Partial NA coefficients for 1 probe(s)

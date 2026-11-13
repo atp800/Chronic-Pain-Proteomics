@@ -1,0 +1,2 @@
+Reference Class (0),Positive Class (1),Reference Observations,Positive Observations,Validation,ROC AUC,Accuracy,F1 (Positive Class),Permutation Draws Requested
+T0,T30,5,5,Nested participant-held-out CV,0.72,0.6,0.5,9999
