@@ -8,7 +8,7 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 from sklearn.metrics import f1_score
-from sklearn.model_selection import GridSearchCV
+from joblib import parallel_backend
 
 import logistic_regression as logistic
 
@@ -17,14 +17,10 @@ class LogisticDirectionTests(unittest.TestCase):
     def setUp(self):
         self.output = self.enterContext(redirect_stdout(io.StringIO()))
         self.enterContext(patch.object(logistic, '_PARAMETER_GRID', {
-            'classifier__C': [1.0], 'classifier__l1_ratio': [.5],
+            'C': [1.0], 'l1_ratio': [.5],
         }))
 
-        def serial_search(*args, **kwargs):
-            kwargs['n_jobs'] = 1
-            return GridSearchCV(*args, **kwargs)
-
-        self.enterContext(patch.object(logistic, 'GridSearchCV', serial_search))
+        self.enterContext(parallel_backend('sequential'))
         self.X = pd.DataFrame({'marker': [1., 2, 3, 4, 9, 10, 11, 12]})
         self.encoded = np.repeat([0, 1], 4)
 

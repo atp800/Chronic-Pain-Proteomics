@@ -10,8 +10,10 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
+from joblib import parallel_backend
+from sklearn.base import clone
 from sklearn.metrics import roc_auc_score, roc_curve
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import GridSearchCV, ParameterGrid, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
@@ -26,14 +28,10 @@ class LogisticValidationTests(unittest.TestCase):
     def setUp(self):
         # Use one candidate and one process so every real CV fit can be inspected.
         self.enterContext(patch.object(logistic, "_PARAMETER_GRID", {
-            "classifier__C": [1.0], "classifier__l1_ratio": [0.5],
+            "C": [1.0], "l1_ratio": [0.5],
         }))
 
-        def serial_search(*args, **kwargs):
-            kwargs["n_jobs"] = 1
-            return GridSearchCV(*args, **kwargs)
-
-        self.enterContext(patch.object(logistic, "GridSearchCV", serial_search))
+        self.enterContext(parallel_backend("sequential"))
         self.output = self.enterContext(redirect_stdout(io.StringIO()))
         self.y = np.repeat([0, 1], 5)
         self.X = pd.DataFrame({
@@ -59,9 +57,17 @@ class LogisticValidationTests(unittest.TestCase):
             scaler_inputs.append(X.copy())
             return fit_scaler(scaler, X, *args, **kwargs)
 
-        with patch.object(ProteinFeatures, "fit", record_features), patch.object(StandardScaler, "fit", record_scaler):
+        grid = {"C": [0.1, 1, 10], "l1_ratio": [0.1, 1.0]}
+        with (patch.object(ProteinFeatures, "fit", record_features), patch.object(StandardScaler, "fit", record_scaler),
+              patch.object(logistic, "_PARAMETER_GRID", grid),
+              patch.object(ProteinFeatures, "transform", autospec=True, side_effect=ProteinFeatures.transform) as transform):
             logistic._fit_tuned_model(self.X, self.y, delta=False)
 
+        # Each split transforms its training and validation rows once, plus the final refit.
+        expected_transforms = [self.X.iloc[rows].index.tolist()
+                               for split in StratifiedKFold(5).split(self.X, self.y) for rows in split]
+        self.assertEqual([call.args[1].index.tolist() for call in transform.call_args_list],
+                         expected_transforms + [self.X.index.tolist()])
         inner = StratifiedKFold(5).split(self.X, self.y)
         expected_rows = [train for train, _ in inner] + [np.arange(len(self.X))]
         self.assertEqual(len(fits), len(expected_rows))
@@ -81,6 +87,24 @@ class LogisticValidationTests(unittest.TestCase):
             np.testing.assert_allclose(fitted.fill_sd_, 0.3 * observed.std())
             np.testing.assert_allclose(scaled_input, fitted.transform(train))
             self.assertTrue(np.isfinite(scaled_input).all())
+
+    def test_winner_and_held_out_probabilities_match_full_pipeline_grid_search(self):
+        grid = {"C": [0.01, 1, 10], "l1_ratio": [0.1, 1.]}
+        reference_grid = {f"classifier__{name}": values for name, values in grid.items()}
+        baseline = pd.DataFrame(10., index=self.X.index, columns=self.X.columns)
+        endpoints = pd.concat({"baseline": baseline, "followup": baseline + self.X}, axis=1)
+        ids = self.participants.to_numpy()
+        # Hold the same participant's two visits out in all three comparisons.
+        train, test = ids != ids[0], ids == ids[0]
+        for X, delta, groups in [(self.X, False, None), (self.X, False, ids[train]), (endpoints, True, None)]:
+            with self.subTest(delta=delta, paired=groups is not None), patch.object(logistic, "_PARAMETER_GRID", grid):
+                model = logistic._fit_tuned_model(X.loc[train], self.y[train], delta, groups)
+                search = GridSearchCV(clone(model), reference_grid, cv=logistic._validation_cv(self.y[train], groups),
+                                      scoring="accuracy", n_jobs=1, error_score="raise")
+                search.fit(X.loc[train], self.y[train], groups=groups)
+                for name, expected in search.best_params_.items():
+                    self.assertEqual(model.get_params()[name], expected)
+                np.testing.assert_array_equal(model.predict_proba(X.loc[test]), search.predict_proba(X.loc[test]))
 
     def test_outer_prediction_ignores_its_label_and_training_constant_protein(self):
         X = self.X.assign(held_out_only=0.0)
@@ -183,7 +207,7 @@ class LogisticValidationTests(unittest.TestCase):
         raw = self.X.assign(on_off=[2., 4, 6, 8, 10] + [np.nan] * 5)
         baseline = pd.DataFrame(10., index=raw.index, columns=raw.columns)
         endpoints = pd.concat({"baseline": baseline, "followup": baseline + raw}, axis=1)
-        grid = {"classifier__C": [0.05, 2.], "classifier__l1_ratio": [0.1, 1.]}
+        grid = {"C": [0.05, 2.], "l1_ratio": [0.1, 1.]}
         rng = np.random.RandomState(42)
         assignments = [rng.permutation(self.y) for _ in range(2)]
         real_fit = logistic._fit_tuned_model
@@ -194,13 +218,14 @@ class LogisticValidationTests(unittest.TestCase):
                 observed_auc = roc_auc_score(self.y, observed_probs[:, 1])
                 predictions, retained = [], []
 
-                def inspect_fit(train, labels, is_delta, ids):
+                def inspect_fit(train, labels, is_delta, ids, *, n_jobs):
+                    self.assertEqual(n_jobs, 1)
                     draw = assignments[len(predictions) // len(X)]
                     np.testing.assert_array_equal(labels, draw[X.index.get_indexer(train.index)])
                     pd.testing.assert_frame_equal(train, X.loc[train.index])
                     self.assertEqual(is_delta, delta)
                     self.assertIsNone(ids)
-                    model = real_fit(train, labels, is_delta, ids)
+                    model = real_fit(train, labels, is_delta, ids, n_jobs=n_jobs)
                     marker = raw.loc[train.index, "on_off"].notna()
                     keep = marker.groupby(labels).mean().ge(0.7).any()
                     self.assertEqual("on_off" in model.named_steps["proteins"].proteins_, keep)
@@ -210,12 +235,12 @@ class LogisticValidationTests(unittest.TestCase):
                     return model
 
                 with (patch.object(logistic, "_fit_tuned_model", inspect_fit),
-                      patch.object(logistic, "GridSearchCV", wraps=logistic.GridSearchCV) as searches):
+                      patch.object(logistic, "_fold_accuracy", wraps=logistic._fold_accuracy) as scores_run):
                     scores, pvalue = logistic._nested_permutation_test(X, self.y, delta, None, observed_auc,
                                                                        n_permutations=2)
-                self.assertEqual(searches.call_count, len(assignments) * len(X))
-                for call in searches.call_args_list:
-                    self.assertEqual(call.args[1], grid)
+                self.assertEqual([call.args[1] for call in scores_run.call_args_list],
+                                 [params for params in ParameterGrid(grid) for _ in range(4)]
+                                 * (len(assignments) * len(X)))
                 self.assertIn(False, retained)  # the full-data fit retains this marker under the real labels
                 expected = []
                 for i, labels in enumerate(assignments):
@@ -228,7 +253,8 @@ class LogisticValidationTests(unittest.TestCase):
         y = np.array([0, 1] * 3)
         ids = np.repeat(["a", "b", "c"], 2)
 
-        def predict(X, labels, delta, participant_ids, *, show_progress):
+        def predict(X, labels, delta, participant_ids, *, show_progress, inner_jobs):
+            self.assertEqual(inner_jobs, 1)
             # Perfect or reversed rankings, depending on the first pair's assignment.
             positive = labels if labels[0] == 0 else 1 - labels
             return np.column_stack([1 - positive, positive])
@@ -238,6 +264,12 @@ class LogisticValidationTests(unittest.TestCase):
         self.assertEqual(len(scores), 100)
         self.assertEqual(set(scores), {0., 1.})
         self.assertEqual(fit.call_count, 7)  # eight possible assignments, observed score already known
+        rng = np.random.RandomState(42)
+        expected = []
+        for _ in range(100):
+            labels = np.concatenate([rng.permutation(y[i:i + 2]) for i in range(0, len(y), 2)])
+            expected.append(float(labels[0] == 0))
+        np.testing.assert_array_equal(scores, expected)
         self.assertEqual(pvalue, (1 + np.count_nonzero(scores == 1.)) / 101)
 
     def test_no_permutation_pvalue_when_a_shuffled_fold_has_no_eligible_proteins(self):
@@ -253,14 +285,15 @@ class LogisticValidationTests(unittest.TestCase):
     def test_eight_vs_four_uses_feasible_inner_folds_and_a_pooled_auc(self):
         y = np.repeat([0, 1], [8, 4])
         X = pd.DataFrame({"protein": [5., 8, 6, 9, 3, 7, 11, 4, 8, 5, 10, 6]})
-        real_search = logistic.GridSearchCV
+        validation_cv = logistic._validation_cv
         folds = []
 
-        def inspect_search(*args, **kwargs):
-            folds.append(kwargs["cv"])
-            return real_search(*args, **kwargs)
+        def inspect_cv(labels, participant_ids):
+            cv = validation_cv(labels, participant_ids)
+            folds.append(cv.get_n_splits())
+            return cv
 
-        with patch.object(logistic, "GridSearchCV", inspect_search):
+        with patch.object(logistic, "_validation_cv", inspect_cv):
             probs = logistic._leave_one_out_probabilities(X, y, False)[:, 1]
         self.assertEqual(folds, [4] * 8 + [3] * 4)
         self.assertTrue(np.isfinite(probs).all())

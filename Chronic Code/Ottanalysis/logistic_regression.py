@@ -6,10 +6,11 @@ import seaborn as sns
 from matplotlib.backends.backend_pdf import PdfPages
 import warnings
 from numbers import Integral
+from joblib import Parallel, delayed, effective_n_jobs, parallel_config
 from sklearn.exceptions import ConvergenceWarning
 
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import GridSearchCV, GroupKFold, LeaveOneGroupOut, LeaveOneOut
+from sklearn.model_selection import GroupKFold, LeaveOneGroupOut, LeaveOneOut, ParameterGrid, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, accuracy_score, f1_score
 from sklearn.base import clone
@@ -38,10 +39,10 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)
 # Monte Carlo draws; repeated assignments reuse the same fitted validation score.
 DEFAULT_PERMUTATIONS = 9999
 
-# Preserve the original search values and tie order (ascending C within each L1 ratio).
+# Prespecified elastic-net grid, in tie-breaking order (ascending C within each L1 ratio).
 _PARAMETER_GRID = [
-    {"classifier__C": np.logspace(-4, 4, 10), "classifier__l1_ratio": [ratio]}
-    for ratio in (0.1, 0.5, 0.7, 0.9, 0.95, 1.0)
+    {"C": [0.0001, 0.01, 1, 100, 10000], "l1_ratio": [ratio]}
+    for ratio in (0.5, 0.9, 1.0)
 ]
 
 
@@ -78,11 +79,17 @@ def _complete_pair_mask(X, visits, participant_ids):
 
 def _validation_cv(y, participant_ids):
     if participant_ids is None:
-        return min(5, int(np.bincount(y).min()))
+        return StratifiedKFold(n_splits=min(5, int(np.bincount(y).min())))
     return GroupKFold(n_splits=min(5, len(np.unique(participant_ids))))
 
 
-def _fit_tuned_model(X, y, delta, participant_ids=None):
+def _fold_accuracy(classifier, params, X_train, y_train, X_valid, y_valid):
+    model = clone(classifier).set_params(**params)
+    model.fit(X_train, y_train)
+    return model.score(X_valid, y_valid)
+
+
+def _fit_tuned_model(X, y, delta, participant_ids=None, *, n_jobs=-1):
     pipeline = Pipeline([
         ("proteins", ProteinFeatures(delta=delta)),
         ("scale", StandardScaler()),
@@ -90,14 +97,30 @@ def _fit_tuned_model(X, y, delta, participant_ids=None):
             penalty="elasticnet", solver="saga", max_iter=10000, random_state=42
         )),
     ])
-    # GridSearchCV must wrap the whole pipeline so even inner validation rows
-    # are excluded from selection, imputation and scaling.
-    search = GridSearchCV(pipeline, _PARAMETER_GRID, cv=_validation_cv(y, participant_ids), scoring="accuracy",
-                          n_jobs=-1, error_score="raise")
-    return search.fit(X, y, groups=participant_ids).best_estimator_
+    # Coverage depends on the training labels. Each call (including each
+    # permutation) prepares its own folds, fitting only on inner training rows.
+    folds = []
+    cv = _validation_cv(y, participant_ids)
+    for train, valid in cv.split(X, y, participant_ids):
+        preprocessing = clone(pipeline[:-1])
+        X_train = preprocessing.fit_transform(X.iloc[train], y[train])
+        X_valid = preprocessing.transform(X.iloc[valid])
+        folds.append((X_train, y[train], X_valid, y[valid]))
+
+    classifier = pipeline.named_steps["classifier"]
+    candidates = list(ParameterGrid(_PARAMETER_GRID))
+    fold_scores = Parallel(n_jobs=n_jobs)(
+        delayed(_fold_accuracy)(classifier, params, *fold)
+        for params in candidates for fold in folds
+    )
+    scores = np.reshape(fold_scores, (len(candidates), len(folds))).mean(axis=1)
+    # GridSearchCV breaks accuracy ties in grid order and refits on all rows
+    # supplied to this search (the outer training set during validation).
+    classifier.set_params(**candidates[np.argmax(scores)])
+    return pipeline.fit(X, y)
 
 
-def _leave_one_out_probabilities(X, y, delta, participant_ids=None, *, show_progress=True):
+def _leave_one_out_probabilities(X, y, delta, participant_ids=None, *, show_progress=True, inner_jobs=-1):
     outer = LeaveOneOut() if participant_ids is None else LeaveOneGroupOut()
     n_folds = outer.get_n_splits(X, y, participant_ids)
     probabilities = np.empty((len(X), 2))
@@ -107,7 +130,7 @@ def _leave_one_out_probabilities(X, y, delta, participant_ids=None, *, show_prog
             bar = '█' * filled + '-' * (40 - filled)
             print(f'\rProgress: |{bar}| {100 * i // n_folds}% ({i}/{n_folds})', end='', flush=True)
         train_ids = None if participant_ids is None else participant_ids[train]
-        model = _fit_tuned_model(X.iloc[train], y[train], delta, train_ids)
+        model = _fit_tuned_model(X.iloc[train], y[train], delta, train_ids, n_jobs=inner_jobs)
         probabilities[test] = model.predict_proba(X.iloc[test])
     if show_progress:
         print("\nValidation Complete.\n")
@@ -175,7 +198,16 @@ def _pooled_auc(y, probabilities):
     return roc_auc_score(y, probabilities[:, 1])
 
 
-def _nested_permutation_test(X, y, delta, participant_ids, observed_auc, *, n_permutations=DEFAULT_PERMUTATIONS):
+def _score_permutation(X, labels, delta, participant_ids):
+    probabilities = _leave_one_out_probabilities(X, labels, delta, participant_ids, show_progress=False, inner_jobs=1)
+    score = _pooled_auc(labels, probabilities)
+    if not np.isfinite(score):
+        raise ValueError("A permuted held-out AUC was undefined.")
+    return labels.tobytes(), score
+
+
+def _nested_permutation_test(X, y, delta, participant_ids, observed_auc, *, n_permutations=DEFAULT_PERMUTATIONS,
+                             n_jobs=-1):
     """Compare the observed pooled held-out AUC with the same procedure under shuffled labels."""
     if (not np.isfinite(observed_auc) or isinstance(n_permutations, bool)
             or not isinstance(n_permutations, Integral) or n_permutations < 1):
@@ -183,26 +215,32 @@ def _nested_permutation_test(X, y, delta, participant_ids, observed_auc, *, n_pe
     rng = np.random.RandomState(42)
     pairs = None if participant_ids is None else _participant_pairs(participant_ids)
     scores = np.empty(n_permutations)
-    # All fitting steps are deterministic. Count repeated labelings on every draw,
-    # but run the nested search only once per distinct assignment for this comparison.
-    scores_by_labels = {y.tobytes(): observed_auc}
+    # Draw in the parent so the assignment sequence is independent of scheduling.
+    # Every occurrence keeps its original position, including the observed labels.
+    positions_by_labels = {}
     for i in range(n_permutations):
-        print(f'\rPermutation {i + 1}/{n_permutations}', end='', flush=True)
         if pairs is None:
             labels = rng.permutation(y)
         else:
             labels = y.copy()
             for pair in pairs:
                 labels[pair] = rng.permutation(y[pair])
-        key = labels.tobytes()
-        if key not in scores_by_labels:
-            probabilities = _leave_one_out_probabilities(X, labels, delta, participant_ids, show_progress=False)
-            score = _pooled_auc(labels, probabilities)
-            if not np.isfinite(score):
-                raise ValueError("A permuted held-out AUC was undefined.")
-            scores_by_labels[key] = score
-        scores[i] = scores_by_labels[key]
-    print()
+        positions_by_labels.setdefault(labels.tobytes(), []).append(i)
+
+    scores[positions_by_labels.pop(y.tobytes(), [])] = observed_auc
+    n_assignments = len(positions_by_labels)
+    if n_assignments:
+        workers = min(n_assignments, effective_n_jobs(n_jobs))
+        print(f"Scoring {n_assignments} distinct shuffled assignments with {workers} worker(s).")
+        with parallel_config(backend="loky", inner_max_num_threads=1):
+            completed = Parallel(n_jobs=workers, return_as="generator_unordered")(
+                delayed(_score_permutation)(X, np.frombuffer(key, dtype=y.dtype), delta, participant_ids)
+                for key in positions_by_labels
+            )
+            for count, (key, score) in enumerate(completed, start=1):
+                scores[positions_by_labels[key]] = score
+                print(f'\rDistinct assignments scored: {count}/{n_assignments}', end='', flush=True)
+        print()
 
     # Count ties, including equal rank-based AUCs that differ only by roundoff.
     tied = np.isclose(scores, observed_auc, rtol=1e-14, atol=0)

@@ -2,7 +2,7 @@ NOMINAL - SOLUBLE
 Complete - Longitudinal: T0 vs every other timepoint, R and NR (separate) - logistic & limma		- accidentally left in T0 vs T0
 Complete - Group: NR vs R at every timepoint (baseline NR) - limma
 Complete - Delta: NR vs R for delta from T0 to every other timepoint - limma
-	Group: NR vs R at every timepoint (baseline NR) - logistic - up to D3
+Running - Group: NR vs R at every timepoint (baseline NR) - logistic - up to D3
 	Group: NR vs R at every timepoint (baseline NR) - logistic - D5 onwards
 	Delta: NR vs R for delta from T0 to every other timepoint - logistic
 	Hinge: R - T10/T20/T30 removed - CONFIRM WITH PAULINE FIRST
