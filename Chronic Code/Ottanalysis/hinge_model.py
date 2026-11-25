@@ -4,6 +4,9 @@ import pandas as pd
 import statsmodels.formula.api as smf
 import os
 from tempfile import mkdtemp
+from numbers import Integral
+from joblib import Parallel, delayed, effective_n_jobs, parallel_config
+from threadpoolctl import threadpool_limits
 import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -170,112 +173,18 @@ def plot_best_fit(protein_name, df_long, model_result, output_path, subject_id_c
     plt.close(fig)
 
 
-def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plots, output_dir, subject_id_delimiter,
-                    *, n_bootstrap=DEFAULT_BOOTSTRAPS, random_seed=DEFAULT_SEED, fdr_threshold=.05, rank_by_nominal=False):
-    """
-    Fits a mixed-effects hinge model for each protein
-
-    For each protein, iterates through candidate peaks, selects the
-    best mixed model based on AIC, and saves the results and visualisations.
-
-    Whole-search bootstrap inference and BH FDR correction are always
-    calculated where possible.
-    By default, ranking, plotting and Significant_Hinges use search-adjusted
-    BH FDR. When rank_by_nominal=True, they use the nominal slope-change
-    p-value of the AIC-selected hinge instead.
-    Nominal significance is exploratory and does not require a successful
-    whole-search bootstrap.
-
-    If no mixed fit succeeds, saves the best descriptive OLS fit without p-values.
-    Missing outcomes are omitted separately for each protein; incomplete participants remain.
-    """
-    validate_test_settings(n_bootstrap, random_seed, fdr_threshold)
-    print("Creating hinge models (profiled random-intercept ML; MixedLM fallbacks: lbfgs, bfgs, cg)")
-    print("Using observed protein measurements only; missing abundances are not imputed.")
-    print(f"Whole-search bootstrap: up to {n_bootstrap} simulations per protein; minimum p = {1 / (n_bootstrap + 1):.6g}.")
-
-    if not protein_cols:
-        print("Hinge analysis skipped: no protein columns found.")
-        return
-
-    df_copy = df.copy()
-    
-    # Extract subject IDs from id_col
-    try:
-        df_copy['subject_id_col'] = derive_subject_ids(df_copy[id_col], subject_id_delimiter)
-    except Exception as e:
-        print(f"Error extracting subject IDs: {e}")
-        return
-
-    # Create numeric time column
-    df_copy['time_numeric'] = df_copy[time_col].astype(str).apply(convert_timepoint_to_number)
-
-    # Drop rows where conversion failed
-    failed_conversions = df_copy['time_numeric'].isna().sum()
-    if failed_conversions > 0:
-        print(f"Dropped rows where time couldn't be extracted - try reformating to timepoints to integers: {failed_conversions}")
-        df_copy.dropna(subset=['time_numeric'], inplace=True)
-
-    # Non-finite abundances are missing outcomes, not artificial low abundances.
-    df_copy[protein_cols] = df_copy[protein_cols].replace([np.inf, -np.inf], np.nan)
-    # Missing measurements are excluded separately for each protein.
-    observed_means = (
-        df_copy
-        .groupby('time_numeric')[protein_cols]
-        .mean()
-        .sort_index()
-    )
-
-    # Convert candidate peaks
-    candidate_peaks_numeric = [convert_timepoint_to_number(str(peak)) for peak in candidate_peaks]
-    candidate_peaks_numeric = list(dict.fromkeys(p for p in candidate_peaks_numeric if p is not None)) # Remove candidate peaks that couldn't be covnerted to a numeric value, avoiding duplicates
-    if not candidate_peaks_numeric:
-        print("Candidate peaks couldn't be converted to numeric timepoints - try reformatting timepoints to integers")
-        return
-
-    all_results = []
-    all_candidate_results = []
-    all_coverage = []
-    coverage_by_time = []
-    analysis_info = pd.DataFrame([
-        {'Setting': 'Mixed-model solver', 'Value': 'Profiled random-intercept ML with an explicit zero-variance boundary; observed-information Wald errors. MixedLM lbfgs/bfgs/cg fallbacks.'},
-        {'Setting': 'Missing outcomes', 'Value': 'Observed finite abundances only; no imputation. Incomplete participants retained.'},
-        {'Setting': 'Mixed-model replication', 'Value': 'At least two participants with observations at two or more distinct times. This is a minimum safeguard, not a guarantee of precision.'},
-        {'Setting': 'Candidate comparison', 'Value': 'All candidate hinges for a protein use the same observed rows; AIC compared within model type.'},
-        {'Setting': 'Missingness assumption', 'Value': 'Likelihood inference assumes missing at random given the model. Abundance-dependent non-detection may still bias estimates.'},
-        {'Setting': 'Search test', 'Value': 'Parametric bootstrap of maximum mixed-model likelihood gain over a linear no-bend mixed model; repeats all eligible candidate days.'},
-        {'Setting': 'Bootstrap target', 'Value': n_bootstrap},
-        {'Setting': 'Bootstrap seed', 'Value': random_seed},
-        {'Setting': 'Minimum bootstrap p-value', 'Value': 1 / (n_bootstrap + 1)},
-        {'Setting': 'Bootstrap failures/stopping', 'Value': 'Failed draws count as exceedances. Early stopping only after significance is impossible; uncomputed draws also count as exceedances, yielding a labelled upper bound.'},
-        {'Setting': 'FDR method', 'Value': 'Benjamini-Hochberg (BH); assumes independent or suitably positively dependent protein tests.'},
-        {'Setting': 'FDR family', 'Value': f'All {len(protein_cols)} requested proteins in this group/sheet. Skipped/unavailable tests count as p=1 for adjustment and remain blank in results.'},
-        {'Setting': 'FDR threshold', 'Value': fdr_threshold},
-        {'Setting': 'Reporting mode', 'Value': 'Nominal' if rank_by_nominal else 'FDR'},
-        {'Setting': 'Ranking criterion', 'Value': 'AIC-selected hinge nominal slope-change p-value' if rank_by_nominal else 'Search-adjusted BH FDR, then whole-search p-value'},
-        {'Setting': 'Significant_Hinges criterion', 'Value': f'Nominal slope-change p < {fdr_threshold}' if rank_by_nominal else f'Search-adjusted BH FDR <= {fdr_threshold}'},
-        {'Setting': 'Candidate p-value columns', 'Value': 'One nominal slope-change p-value per configured candidate hinge; blanks indicate unavailable tests.'},
-        {'Setting': 'Nominal search-test requirement', 'Value': 'Nominal significance does not require a successful whole-search bootstrap. Check Hinge_Test_Status and Hinge_Search_PValue.'},
-        {'Setting': 'Nominal inference warning', 'Value': 'Nominal coefficient p-values are unadjusted for hinge-day selection and testing multiple proteins. Best_Peak is an estimate, not a confirmed exact day.'},
-    ])
-
-    # Map numeric times back to their original labels, such as "D7".
-    time_label_map = dict(
-        zip(df_copy['time_numeric'], df_copy[time_col])
-    )
-    
-    failed_protein_count = 0
-
-    # Use tqdm for a progress bar
-    for protein in tqdm(protein_cols, desc="Processing proteins"):
-        df_long = df_copy[['subject_id_col', time_col, 'time_numeric', protein]].copy()            # reformat dataframe to long format
-        df_long.rename(columns={protein: 'value'}, inplace=True)                    # rename the protein column to a generic name for modelling
+def _fit_hinge_protein(index, protein, df_long, candidate_peaks_numeric, time_label_map,
+                       n_participants, n_bootstrap, random_seed, fdr_threshold):
+    """Fit one protein and its bootstrap using one numerical-library thread."""
+    with threadpool_limits(limits=1):
+        n_recorded = len(df_long)
+        candidate_results = []
+        result_record = None
         counts_by_time = df_long.groupby('time_numeric')['value'].agg(['count', 'size'])
         counts_by_time = counts_by_time.rename(columns={'count': 'N_Observed', 'size': 'N_Recorded_Visits'})
         counts_by_time['N_Missing'] = counts_by_time['N_Recorded_Visits'] - counts_by_time['N_Observed']
         counts_by_time['Time_Label'] = counts_by_time.index.map(time_label_map)
         counts_by_time.insert(0, 'Protein', protein)
-        coverage_by_time.append(counts_by_time.reset_index())
 
         # Keep every available measurement, including a participant's lone observation.
         # The identical observed rows are used for every candidate, optimiser and fallback.
@@ -284,15 +193,14 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
         times_per_person = df_long.groupby('subject_id_col')['time_numeric'].nunique()
         coverage = {
             'N_Observed': len(df_long),
-            'N_Missing': len(df_copy) - len(df_long),
+            'N_Missing': n_recorded - len(df_long),
             'N_Participants_Observed': len(observations_per_person),
             'N_Participants_Repeated': int(times_per_person.ge(2).sum()),
             'N_Participants_Single_Observation': int(observations_per_person.eq(1).sum()),
-            'N_Participants_Unobserved': df_copy['subject_id_col'].nunique() - len(observations_per_person),
+            'N_Participants_Unobserved': n_participants - len(observations_per_person),
             'N_Observed_Timepoints': df_long['time_numeric'].nunique(),
         }
         coverage_record = {'Protein': protein, **coverage, 'Status': 'No usable candidate fit'}
-        all_coverage.append(coverage_record)
         protein_issue = None
         if coverage['N_Observed_Timepoints'] < 3:
             protein_issue = 'Fewer than three observed time points'
@@ -320,7 +228,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                 'Slope_2_Change_PValue_Nominal': np.nan,
                 'Status': 'Fit failed'
             }
-            all_candidate_results.append(candidate_record)
+            candidate_results.append(candidate_record)
 
             if protein_issue:
                 candidate_record['Status'] = protein_issue
@@ -344,7 +252,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                 candidate_record['Status'] = 'Observed hinge design is not estimable'
                 continue
             candidate_llfs[peak] = np.nan
-            
+
             if coverage['N_Participants_Repeated'] >= 2:
                 mdf, optimizer, diagnostics = _fit_mixed_model(df_long)
             else:
@@ -395,7 +303,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                 }
 
 
-        
+
         # Store the results of best fitting model for the protein
         best_model = best_by_type.get('Mixed-Effects', best_by_type.get('Fixed-Effects', {}))
         if 'results' in best_model:
@@ -405,16 +313,15 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
             if is_mixed:
                 test = bootstrap_hinge_test(
                     df_long, candidate_llfs, _fit_mixed_model, protein=protein,
-                    n_bootstrap=n_bootstrap, seed=random_seed, alpha=fdr_threshold,
+                    n_bootstrap=n_bootstrap, seed=random_seed, alpha=fdr_threshold, show_progress=False,
                 )
             coverage_record['Status'] = 'Mixed-effects fitted' if is_mixed else 'Descriptive OLS fallback'
             slope1_coef = res.params.get('slope1', 0)
             slope2_change_coef = res.params.get('slope2_change', 0)
 
-            numeric_to_label_map = dict(zip(df_copy['time_numeric'], df_copy[time_col]))
-            best_peak_label = numeric_to_label_map.get(best_model['peak'], str(best_model['peak']))
-            
-            all_results.append({
+            best_peak_label = time_label_map.get(best_model['peak'], str(best_model['peak']))
+
+            result_record = {
                 'Protein': protein,
                 **coverage,
                 **test,
@@ -433,10 +340,144 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
                 'Slope_1_PValue_Nominal': res.pvalues.get('slope1', np.nan) if is_mixed else np.nan,
                 'Slope_2_Change_PValue_Nominal': res.pvalues.get('slope2_change', np.nan) if is_mixed else np.nan,
                 'Model_Converged': getattr(res, 'converged', 'N/A')             # fixed-effects/OLS models don't have convergence
-            })
-        else:
+            }
+
+        return index, result_record, candidate_results, coverage_record, counts_by_time.reset_index()
+
+
+def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plots, output_dir, subject_id_delimiter,
+                    *, n_bootstrap=DEFAULT_BOOTSTRAPS, random_seed=DEFAULT_SEED, fdr_threshold=.05,
+                    rank_by_nominal=False, n_jobs=12):
+    """
+    Fits a mixed-effects hinge model for each protein
+
+    For each protein, iterates through candidate peaks, selects the
+    best mixed model based on AIC, and saves the results and visualisations.
+
+    Whole-search bootstrap inference and BH FDR correction are always
+    calculated where possible.
+    By default, ranking, plotting and Significant_Hinges use search-adjusted
+    BH FDR. When rank_by_nominal=True, they use the nominal slope-change
+    p-value of the AIC-selected hinge instead.
+    Nominal significance is exploratory and does not require a successful
+    whole-search bootstrap.
+
+    If no mixed fit succeeds, saves the best descriptive OLS fit without p-values.
+    Missing outcomes are omitted separately for each protein; incomplete participants remain.
+    n_jobs sets the protein worker limit (1 for serial, -1 for all available CPUs).
+    Each worker uses one numerical-library thread. Only the parent writes output.
+    """
+    validate_test_settings(n_bootstrap, random_seed, fdr_threshold)
+    if isinstance(n_jobs, bool) or not isinstance(n_jobs, Integral) or n_jobs == 0:
+        raise ValueError("Hinge workers must be a nonzero integer; use -1 for all CPUs.")
+    print("Creating hinge models (profiled random-intercept ML; MixedLM fallbacks: lbfgs, bfgs, cg)")
+    print("Using observed protein measurements only; missing abundances are not imputed.")
+    print(f"Whole-search bootstrap: up to {n_bootstrap} simulations per protein; minimum p = {1 / (n_bootstrap + 1):.6g}.")
+
+    if not protein_cols:
+        print("Hinge analysis skipped: no protein columns found.")
+        return
+
+    df_copy = df.copy()
+    
+    # Extract subject IDs from id_col
+    try:
+        df_copy['subject_id_col'] = derive_subject_ids(df_copy[id_col], subject_id_delimiter)
+    except Exception as e:
+        print(f"Error extracting subject IDs: {e}")
+        return
+
+    # Create numeric time column
+    df_copy['time_numeric'] = df_copy[time_col].astype(str).apply(convert_timepoint_to_number)
+
+    # Drop rows where conversion failed
+    failed_conversions = df_copy['time_numeric'].isna().sum()
+    if failed_conversions > 0:
+        print(f"Dropped rows where time couldn't be extracted - try reformating to timepoints to integers: {failed_conversions}")
+        df_copy.dropna(subset=['time_numeric'], inplace=True)
+
+    # Non-finite abundances are missing outcomes, not artificial low abundances.
+    df_copy[protein_cols] = df_copy[protein_cols].replace([np.inf, -np.inf], np.nan)
+    # Missing measurements are excluded separately for each protein.
+    observed_means = (
+        df_copy
+        .groupby('time_numeric')[protein_cols]
+        .mean()
+        .sort_index()
+    )
+
+    # Convert candidate peaks
+    candidate_peaks_numeric = [convert_timepoint_to_number(str(peak)) for peak in candidate_peaks]
+    candidate_peaks_numeric = list(dict.fromkeys(p for p in candidate_peaks_numeric if p is not None)) # Remove candidate peaks that couldn't be covnerted to a numeric value, avoiding duplicates
+    if not candidate_peaks_numeric:
+        print("Candidate peaks couldn't be converted to numeric timepoints - try reformatting timepoints to integers")
+        return
+
+    workers = min(len(protein_cols), effective_n_jobs(n_jobs), effective_n_jobs(-1))
+    print(f"Processing proteins with {workers} worker(s), one numerical-library thread per worker.")
+    all_results = []
+    all_candidate_results = []
+    all_coverage = []
+    coverage_by_time = []
+    analysis_info = pd.DataFrame([
+        {'Setting': 'Protein workers', 'Value': workers},
+        {'Setting': 'Numerical-library threads per worker', 'Value': 1},
+        {'Setting': 'Mixed-model solver', 'Value': 'Profiled random-intercept ML with an explicit zero-variance boundary; observed-information Wald errors. MixedLM lbfgs/bfgs/cg fallbacks.'},
+        {'Setting': 'Missing outcomes', 'Value': 'Observed finite abundances only; no imputation. Incomplete participants retained.'},
+        {'Setting': 'Mixed-model replication', 'Value': 'At least two participants with observations at two or more distinct times. This is a minimum safeguard, not a guarantee of precision.'},
+        {'Setting': 'Candidate comparison', 'Value': 'All candidate hinges for a protein use the same observed rows; AIC compared within model type.'},
+        {'Setting': 'Missingness assumption', 'Value': 'Likelihood inference assumes missing at random given the model. Abundance-dependent non-detection may still bias estimates.'},
+        {'Setting': 'Search test', 'Value': 'Parametric bootstrap of maximum mixed-model likelihood gain over a linear no-bend mixed model; repeats all eligible candidate days.'},
+        {'Setting': 'Bootstrap target', 'Value': n_bootstrap},
+        {'Setting': 'Bootstrap seed', 'Value': random_seed},
+        {'Setting': 'Minimum bootstrap p-value', 'Value': 1 / (n_bootstrap + 1)},
+        {'Setting': 'Bootstrap failures/stopping', 'Value': 'Failed draws count as exceedances. Early stopping only after significance is impossible; uncomputed draws also count as exceedances, yielding a labelled upper bound.'},
+        {'Setting': 'FDR method', 'Value': 'Benjamini-Hochberg (BH); assumes independent or suitably positively dependent protein tests.'},
+        {'Setting': 'FDR family', 'Value': f'All {len(protein_cols)} requested proteins in this group/sheet. Skipped/unavailable tests count as p=1 for adjustment and remain blank in results.'},
+        {'Setting': 'FDR threshold', 'Value': fdr_threshold},
+        {'Setting': 'Reporting mode', 'Value': 'Nominal' if rank_by_nominal else 'FDR'},
+        {'Setting': 'Ranking criterion', 'Value': 'AIC-selected hinge nominal slope-change p-value' if rank_by_nominal else 'Search-adjusted BH FDR, then whole-search p-value'},
+        {'Setting': 'Significant_Hinges criterion', 'Value': f'Nominal slope-change p < {fdr_threshold}' if rank_by_nominal else f'Search-adjusted BH FDR <= {fdr_threshold}'},
+        {'Setting': 'Candidate p-value columns', 'Value': 'One nominal slope-change p-value per configured candidate hinge; blanks indicate unavailable tests.'},
+        {'Setting': 'Nominal search-test requirement', 'Value': 'Nominal significance does not require a successful whole-search bootstrap. Check Hinge_Test_Status and Hinge_Search_PValue.'},
+        {'Setting': 'Nominal inference warning', 'Value': 'Nominal coefficient p-values are unadjusted for hinge-day selection and testing multiple proteins. Best_Peak is an estimate, not a confirmed exact day.'},
+    ])
+
+    # Map numeric times back to their original labels, such as "D7".
+    time_label_map = dict(
+        zip(df_copy['time_numeric'], df_copy[time_col])
+    )
+    
+    failed_protein_count = 0
+
+    n_participants = df_copy['subject_id_col'].nunique()
+    protein_results = [None] * len(protein_cols)
+    # loky workers import this module independently of the GUI/main entry point.
+    with parallel_config(backend="loky", inner_max_num_threads=1):
+        with Parallel(n_jobs=workers, return_as="generator_unordered", batch_size=1) as parallel:
+            completed = parallel(
+                delayed(_fit_hinge_protein)(
+                    index, protein,
+                    df_copy[['subject_id_col', 'time_numeric', protein]].rename(columns={protein: 'value'}),
+                    candidate_peaks_numeric, time_label_map, n_participants,
+                    n_bootstrap, random_seed, fdr_threshold,
+                )
+                for index, protein in enumerate(protein_cols)
+            )
+            for index, result, candidates, coverage, counts in tqdm(
+                    completed, total=len(protein_cols), desc="Processing proteins"):
+                protein_results[index] = (result, candidates, coverage, counts)
+
+    # Restore input order before tie-breaking, FDR adjustment and reporting.
+    for protein, (result, candidates, coverage, counts) in zip(protein_cols, protein_results):
+        all_candidate_results.extend(candidates)
+        all_coverage.append(coverage)
+        coverage_by_time.append(counts)
+        if result is None:
             failed_protein_count += 1
             print(f"Failed to fit any model for {protein} - skipping. Total failed so far: {failed_protein_count}")
+        else:
+            all_results.append(result)
 
 
     df_coverage = pd.DataFrame(all_coverage)

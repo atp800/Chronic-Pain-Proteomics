@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from joblib import parallel_backend
 
 import hinge_model as hinge
 from hinge_inference import unavailable_test
@@ -16,6 +17,7 @@ from test_hinge_fallback import repeated_data
 
 class HingeObservedDataTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(parallel_backend('sequential'))
         test = unavailable_test(9, 42, 'Completed')
         test['Hinge_Search_PValue'] = .02
         self.enterContext(patch.object(hinge, 'bootstrap_hinge_test', return_value=test))

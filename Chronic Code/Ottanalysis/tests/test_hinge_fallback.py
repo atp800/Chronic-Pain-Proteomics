@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from joblib import parallel_backend
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 import hinge_model as hinge
@@ -138,6 +139,7 @@ class MixedRetryTests(unittest.TestCase):
 
 class HingeReportingTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(parallel_backend('sequential'))
         # These tests isolate fit/reporting behaviour; bootstrap calibration is tested separately.
         test = unavailable_test(9, 42, 'Completed')
         test['Hinge_Search_PValue'] = .02

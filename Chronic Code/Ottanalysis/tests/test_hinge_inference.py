@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
+from joblib import parallel_backend
 
 import hinge_inference as inference
 import hinge_model as hinge
@@ -161,6 +162,7 @@ class HingeBootstrapTests(unittest.TestCase):
 
 class HingeInferenceIntegrationTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(parallel_backend('sequential'))
         self.enterContext(redirect_stdout(io.StringIO()))
         self.folder = Path(self.enterContext(TemporaryDirectory()))
 
@@ -248,7 +250,8 @@ class HingeInferenceIntegrationTests(unittest.TestCase):
                         ANALYSIS_MODE='GROUP_COMPARISON', BASELINE_VAL='NonResp', COMPARE_VALS=['Resp'],
                         LOOP_VALS=[None], TIME_COLUMN='Time', CONDITION_COLUMN='Condition',
                         HINGE_GROUPS_TO_RUN=['Resp'], HINGE_PEAK_CANDIDATES=['D2', 'D4'],
-                        HINGE_BOOTSTRAP_SIMULATIONS=23, HINGE_BOOTSTRAP_SEED=321, P_THRESHOLD=.1)
+                        HINGE_BOOTSTRAP_SIMULATIONS=23, HINGE_BOOTSTRAP_SEED=321, P_THRESHOLD=.1,
+                        HINGE_WORKERS=3)
         with patch.dict(CONFIG, settings), patch('pandas.read_excel', return_value=data), \
              patch.dict(sys.modules, {'limma': SimpleNamespace(run_limma=Mock())}), \
              patch('os.makedirs'), patch.object(hinge, 'run_hinge_model', return_value=None) as fit, \
@@ -257,3 +260,4 @@ class HingeInferenceIntegrationTests(unittest.TestCase):
         self.assertEqual(fit.call_args.kwargs['n_bootstrap'], 23)
         self.assertEqual(fit.call_args.kwargs['random_seed'], 321)
         self.assertEqual(fit.call_args.kwargs['fdr_threshold'], .1)
+        self.assertEqual(fit.call_args.kwargs['n_jobs'], 3)

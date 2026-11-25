@@ -41,6 +41,7 @@ CONFIG = {
     # Minimum Monte Carlo p = 1e-5, allowing an isolated discovery among ~2,120 proteins.
     "HINGE_BOOTSTRAP_SIMULATIONS": 99999,
     "HINGE_BOOTSTRAP_SEED": 42,
+    "HINGE_WORKERS": 12,  # Capped by available CPUs and proteins. Use 1 for serial, -1 for all CPUs.
     "LOGISTIC_PERMUTATIONS": 9999,  # More precise model-level permutation p-values.
     # "DELTA_COMPARISON": None,
     # "REPLACE_VALS_WITH_DELTAS": True,

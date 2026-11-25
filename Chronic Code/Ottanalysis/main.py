@@ -271,6 +271,7 @@ if CONFIG.get("RUN_HINGE", False):
             random_seed=CONFIG.get("HINGE_BOOTSTRAP_SEED", 42),
             fdr_threshold=CONFIG.get("P_THRESHOLD", 0.05),
             rank_by_nominal=CONFIG.get("HINGE_RANK_BY_NOMINAL", False),
+            n_jobs=CONFIG.get("HINGE_WORKERS", 12),
         )
 
         if group is not None and result_file is not None:
