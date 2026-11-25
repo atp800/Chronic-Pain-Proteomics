@@ -1,0 +1,2 @@
+Reference Class (0),Positive Class (1),Reference Observations,Positive Observations,Validation,ROC AUC,Accuracy,F1 (Positive Class),Permutation Draws Requested
+NR,R,6,6,Nested CV,0.9166666666666667,0.9166666666666666,0.9230769230769231,9999

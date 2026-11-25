@@ -42,6 +42,7 @@ def repeated_data():
 
 class MixedRetryTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.object(hinge, 'fit_random_intercept', side_effect=ValueError('profile failed')))
         self.data = repeated_data().rename(columns={'mixed': 'value'})
         self.data['subject_id_col'] = self.data.Sample_ID.str.split('-').str[0]
         self.data['slope1'] = np.tile([0, 2, 4, 6, 8], 8) - 4
@@ -193,7 +194,8 @@ class HingeReportingTests(unittest.TestCase):
         self.assertEqual((plots / 'notes.txt').read_text(), 'keep')
 
     def test_all_mixed_attempts_fail_but_descriptive_results_are_retained(self):
-        with patch.object(hinge.smf, 'mixedlm', side_effect=np.linalg.LinAlgError('singular')) as fit, \
+        with patch.object(hinge, 'fit_random_intercept', side_effect=ValueError('profile failed')), \
+             patch.object(hinge.smf, 'mixedlm', side_effect=np.linalg.LinAlgError('singular')) as fit, \
              patch.object(hinge, 'plot_best_fit') as plot:
             result = self.run_hinge(['fallback'], peaks=('D0', 'D2', 'D4', 'D8'))
         self.assertEqual(fit.call_count, 6)  # Three attempts at each eligible hinge.
@@ -211,7 +213,8 @@ class HingeReportingTests(unittest.TestCase):
         self.assertEqual(sheets['All_Model_Results'].AIC.iloc[0], eligible.AIC.min())
 
     def test_total_failure_still_exports_candidate_diagnostics(self):
-        with patch.object(hinge.smf, 'mixedlm', side_effect=ValueError('mixed failed')), \
+        with patch.object(hinge, 'fit_random_intercept', side_effect=ValueError('profile failed')), \
+             patch.object(hinge.smf, 'mixedlm', side_effect=ValueError('mixed failed')), \
              patch.object(hinge.smf, 'ols', side_effect=ValueError('OLS failed')):
             self.assertIsNone(self.run_hinge(['mixed']))
         table = pd.read_excel(self.folder / 'hinge_candidate_diagnostics.xlsx')
@@ -261,6 +264,7 @@ class HingeReportingTests(unittest.TestCase):
                         'Model_Type': ['Fixed-Effects' if all_fixed else 'Mixed-Effects', 'Fixed-Effects'],
                         'Hinge_Search_PValue': [.01, 1e-12],
                         'Hinge_FDR': [.02, 1e-12],
+                        'Slope_2_Change_PValue_Nominal': [.01, 1e-12],
                     })
                     paths[group] = self.folder / f'{group}.xlsx'
                     table.to_excel(paths[group], sheet_name='All_Model_Results', index=False)

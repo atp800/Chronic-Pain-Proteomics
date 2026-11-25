@@ -13,6 +13,7 @@ import re
 from helpers import convert_timepoint_to_number, derive_subject_ids
 from hinge_inference import (DEFAULT_BOOTSTRAPS, DEFAULT_SEED, adjust_hinge_fdr,
                              bootstrap_hinge_test, unavailable_test, validate_test_settings)
+from hinge_solver import fit_random_intercept
 import numpy as np
 import traceback
 
@@ -33,6 +34,22 @@ If all mixed fits fail, the best OLS fallback is retained for description only.
 
 
 def _fit_mixed_model(df_long, *, hinge=True):
+    """Use profiled random-intercept ML, with the original optimisers as fallbacks."""
+    try:
+        result = fit_random_intercept(df_long, hinge=hinge)
+    except (ValueError, np.linalg.LinAlgError, FloatingPointError) as exc:
+        diagnostic = f'profile_ml: {type(exc).__name__}: {exc}'
+    else:
+        diagnostic = 'profile_ml: accepted'
+        if result.cov_re[0, 0] == 0:
+            diagnostic += ' [random-intercept variance at zero boundary]'
+        return result, 'profile_ml', diagnostic
+
+    result, optimizer, fallback_diagnostic = _fit_statsmodels_model(df_long, hinge=hinge)
+    return result, optimizer, diagnostic + '; ' + fallback_diagnostic
+
+
+def _fit_statsmodels_model(df_long, *, hinge=True):
     """Retry the same random-intercept model; return the first usable fit and its diagnostics."""
     attempts = []
     for optimizer in ("lbfgs", "bfgs", "cg"):
@@ -173,7 +190,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     Missing outcomes are omitted separately for each protein; incomplete participants remain.
     """
     validate_test_settings(n_bootstrap, random_seed, fdr_threshold)
-    print("Creating hinge models (mixed-effects optimisers: lbfgs, bfgs, cg; OLS fallback is descriptive only)")
+    print("Creating hinge models (profiled random-intercept ML; MixedLM fallbacks: lbfgs, bfgs, cg)")
     print("Using observed protein measurements only; missing abundances are not imputed.")
     print(f"Whole-search bootstrap: up to {n_bootstrap} simulations per protein; minimum p = {1 / (n_bootstrap + 1):.6g}.")
 
@@ -221,6 +238,7 @@ def run_hinge_model(df, protein_cols, time_col, id_col, candidate_peaks, num_plo
     all_coverage = []
     coverage_by_time = []
     analysis_info = pd.DataFrame([
+        {'Setting': 'Mixed-model solver', 'Value': 'Profiled random-intercept ML with an explicit zero-variance boundary; observed-information Wald errors. MixedLM lbfgs/bfgs/cg fallbacks.'},
         {'Setting': 'Missing outcomes', 'Value': 'Observed finite abundances only; no imputation. Incomplete participants retained.'},
         {'Setting': 'Mixed-model replication', 'Value': 'At least two participants with observations at two or more distinct times. This is a minimum safeguard, not a guarantee of precision.'},
         {'Setting': 'Candidate comparison', 'Value': 'All candidate hinges for a protein use the same observed rows; AIC compared within model type.'},

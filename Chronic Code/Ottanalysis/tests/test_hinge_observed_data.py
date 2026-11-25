@@ -64,7 +64,8 @@ class HingeObservedDataTests(unittest.TestCase):
             calls.append(('ols', data.slope1.iloc[0]))
             return real_ols(formula, data=data)
 
-        with patch.object(hinge.smf, 'mixedlm', side_effect=mixed), \
+        with patch.object(hinge, 'fit_random_intercept', side_effect=ValueError('profile failed')), \
+             patch.object(hinge.smf, 'mixedlm', side_effect=mixed), \
              patch.object(hinge.smf, 'ols', side_effect=ols):
             path = self.run_hinge(peaks=('D2', 'D4', 'D8'))
         self.assertEqual([name for name, _ in calls], ['mixed'] * 3 + ['ols'] + ['mixed'] * 3 + ['ols'])

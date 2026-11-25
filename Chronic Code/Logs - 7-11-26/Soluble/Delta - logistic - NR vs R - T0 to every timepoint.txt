@@ -1,0 +1,1090 @@
+PowerShell 7.4.22
+Loading personal and system profiles took 9680ms.
+(base) PS C:\Users\apana\OneDrive\Documents\Research\Uni of Western Sydney\Pain Project\Chronic Code\Ottanalysis> conda activate scripts
+(scripts) PS C:\Users\apana\OneDrive\Documents\Research\Uni of Western Sydney\Pain Project\Chronic Code\Ottanalysis> python main.py
+Auto-detected R installation: C:\Program Files\R\R-4.5.2
+
+--- R and Limma Version Information ---
+R version: R version 4.5.2 (2025-10-31 ucrt)
+limma version: 3.66.0
+Session Info:
+R version 4.5.2 (2025-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] LC_COLLATE=English_United Kingdom.1252
+[2] LC_CTYPE=English_United Kingdom.1252
+[3] LC_MONETARY=English_United Kingdom.1252
+[4] LC_NUMERIC=C
+[5] LC_TIME=English_United Kingdom.1252
+
+time zone: Europe/London
+tzcode source: internal
+
+attached base packages:
+[1] tools     stats     graphics  grDevices utils     datasets  methods
+[8] base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.5.2
+rpy2 version: 3.5.11
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+============================================================
+ANALYSIS MODE: DELTA
+============================================================
+Delta Calculation: Change from baseline T0 to ['D11', 'D14', 'D17', 'D21', 'D25', 'D3', 'D5', 'D7', 'D9', 'T10', 'T20', 'T30']
+Baseline: NR
+Comparisons to make: ['R']
+Will loop independently for: ['D11', 'D14', 'D17', 'D21', 'D25', 'D3', 'D5', 'D7', 'D9', 'T10', 'T20', 'T30']
+
+Loading data...
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D11
+Transforming data into deltas (T0 to D11)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D11 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |███-------------------------------------| 8% (1/12)
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---pandas version: 2.3.3
+
+
+
+
+--- Pandas and sklearn Version Information ---
+scikit-learn version: 1.6.1
+pandas version: 2.3.3
+pandas version: 2.3.3
+pandas version: 2.3.3
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+scikit-learn version: 1.6.1
+scikit-learn version: 1.6.1
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.9444
+Accuracy: 0.7500
+F1 Score (positive class: R): 0.7273
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          5  1
+R           2  4
+
+Proteins retained in the final fit: 729
+Best Regularisation Strength (C): 1
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 37 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D11\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D11\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 0.0148
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D11\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D14
+Transforming data into deltas (T0 to D14)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D14 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |███-------------------------------------| 8% (1/12)
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.2222
+Accuracy: 0.1667
+F1 Score (positive class: R): 0.0000
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          2  4
+R           6  0
+
+Proteins retained in the final fit: 697
+Best Regularisation Strength (C): 1
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 34 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D14\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D14\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 0.6983
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D14\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D17
+Transforming data into deltas (T0 to D17)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D17 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |███-------------------------------------| 8% (1/12)C:\Users\apana\anaconda3\envs\scripts\Lib\site-packages\joblib\externals\loky\process_executor.py:752: UserWarning: A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak.
+  warnings.warn(
+Progress: |██████----------------------------------| 16% (2/12)
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+
+
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.9444
+Accuracy: 0.7500
+F1 Score (positive class: R): 0.7273
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          5  1
+R           2  4
+
+Proteins retained in the final fit: 726
+Best Regularisation Strength (C): 100
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 545 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D17\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D17\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---scikit-learn version: 1.6.1
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 0.0136
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D17\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D21
+Transforming data into deltas (T0 to D21)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D21 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.4444
+Accuracy: 0.4167
+F1 Score (positive class: R): 0.3636
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          3  3
+R           4  2
+
+Proteins retained in the final fit: 719
+Best Regularisation Strength (C): 1
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 38 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D21\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D21\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 0.4260
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D21\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D25
+Transforming data into deltas (T0 to D25)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D25 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.6667
+Accuracy: 0.6667
+F1 Score (positive class: R): 0.6667
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          4  2
+R           2  4
+
+Proteins retained in the final fit: 651
+Best Regularisation Strength (C): 1
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 36 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D25\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D25\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 0.2120
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D25\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D3
+Transforming data into deltas (T0 to D3)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D3 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |██████----------------------------------| 16% (2/12)
+--- Pandas and sklearn Version Information ---
+pandas version: 2.3.3
+scikit-learn version: 1.6.1
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.0000
+Accuracy: 0.0000
+F1 Score (positive class: R): 0.0000
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          0  6
+R           6  0
+
+Proteins retained in the final fit: 698
+Best Regularisation Strength (C): 0.0001
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 0 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D3\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D3\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 1.0000
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D3\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D5
+Transforming data into deltas (T0 to D5)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D5 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.3056
+Accuracy: 0.2500
+F1 Score (positive class: R): 0.1818
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          2  4
+R           5  1
+
+Proteins retained in the final fit: 563
+Best Regularisation Strength (C): 1
+Best L1 Ratio: 0.9
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 12 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D5\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D5\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 0.5846
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D5\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D7
+Transforming data into deltas (T0 to D7)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D7 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.7500
+Accuracy: 0.7500
+F1 Score (positive class: R): 0.7692
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          4  2
+R           1  5
+
+Proteins retained in the final fit: 651
+Best Regularisation Strength (C): 1
+Best L1 Ratio: 0.9
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 15 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D7\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D7\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 0.0866
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D7\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: D9
+Transforming data into deltas (T0 to D9)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (D9 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.8611
+Accuracy: 0.7500
+F1 Score (positive class: R): 0.7273
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          5  1
+R           2  4
+
+Proteins retained in the final fit: 789
+Best Regularisation Strength (C): 100
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 644 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D9\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D9\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 0.0442
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_D9\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T10
+Transforming data into deltas (T0 to T10)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (T10 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 9
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Excluding 3 participants without measurements at both visits.
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (9/9)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.0000
+Accuracy: 0.2222
+F1 Score (positive class: R): 0.0000
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          2  3
+R           4  0
+
+Proteins retained in the final fit: 691
+Best Regularisation Strength (C): 100
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 520 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_T10\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_T10\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 125 distinct shuffled assignments with 20 worker(s).
+Distinct assignments scored: 125/125
+Nested CV permutation p-value (9999 draws): 1.0000
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_T10\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T20
+Transforming data into deltas (T0 to T20)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (T20 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 12
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (12/12)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.7500
+Accuracy: 0.7500
+F1 Score (positive class: R): 0.8000
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          3  3
+R           0  6
+
+Proteins retained in the final fit: 669
+Best Regularisation Strength (C): 1
+Best L1 Ratio: 0.9
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 12 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_T20\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_T20\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 923 distinct shuffled assignments with 20 worker(s).
+Distinct assignments scored: 923/923
+Nested CV permutation p-value (9999 draws): 0.1286
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_T20\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+------------------------------------------------------------------
+------------------------------------------------------------------
+------------------------------------------------------------------
+
+Starting analysis for: T30
+Transforming data into deltas (T0 to T30)
+
+=================================================================
+TRANSFORMING DATA: Calculating Deltas (T30 - T0)
+=================================================================
+Subjects in delta table: 12
+Subjects with at least one non-missing delta: 11
+Running comparison: NR vs R
+Rows in subset: 12
+Paired comparison: False | Is Delta Mode: True
+
+------------------------------------------------------------------
+Running Logistic Regression avec: R vs NR
+------------------------------------------------------------------
+Excluding 1 participants without measurements at both visits.
+Class mapping: 0 = NR (baseline), 1 = R (comparison/positive).
+Positive coefficients increase predicted log odds of R versus NR.
+Leaving one sample out at a time, with preprocessing and tuning inside each training set...
+Progress: |████████████████████████████████████████| 100% (11/11)
+Validation Complete.
+
+
+
+--- Model Performance (Nested CV Estimate) ---
+Pooled held-out ROC AUC: 0.7000
+Accuracy: 0.6364
+F1 Score (positive class: R): 0.6000
+Confusion Matrix:
+Predicted  NR  R
+Actual
+NR          4  2
+R           2  3
+
+Proteins retained in the final fit: 683
+Best Regularisation Strength (C): 1
+Best L1 Ratio: 0.5
+
+Estimating coefficient stability across 500 bootstrap refits with fixed preprocessing and tuning.
+Selection frequency is the percentage of refits with a nonzero coefficient.
+Reporting 47 proteins with nonzero coefficients in the full-data fit.
+Saved features and stability metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_T30\NR_vs_R\LogReg_R_vs_NR_Features.csv
+Saved class mapping and performance metrics to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_T30\NR_vs_R\LogReg_R_vs_NR_Performance.csv
+
+Permutation test: 9999 draws of the pooled held-out ROC AUC, repeating protein selection and tuning in every training set.
+Scoring 461 distinct shuffled assignments with 20 worker(s).
+Distinct assignments scored: 461/461
+Nested CV permutation p-value (9999 draws): 0.1580
+Saved plots to: C:/Users/apana/OneDrive/Documents/Research/Uni of Western Sydney/Pain Project/Chronic Code/Ottanalysis/Analysis_Output/Solube\Logistic Regression\DELTA\T0_to_T30\NR_vs_R\LogReg_R_vs_NR_Plots.pdf
+
+-----------------------------------
+
+-----------------------------------
+j'ai fini
+(scripts) PS C:\Users\apana\OneDrive\Documents\Research\Uni of Western Sydney\Pain Project\Chronic Code\Ottanalysis>
